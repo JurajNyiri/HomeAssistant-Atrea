@@ -163,13 +163,3 @@ class Atrea(Entity):
                 self._state = "Disconnected"
             else:
                 self._state = "Disconnected"
-
-        #power_set -> http://192.168.100.4/config/xml.cgi?auth=49972&H1070800020 = 20%
-        #power_set -> http://192.168.100.4/config/xml.cgi?auth=49972&H1070800097 = 97%
-        # http://192.168.100.4/config/xml.cgi?auth=49972&H1070800100 = 100%
-        # http://192.168.100.4/config/xml.cgi?auth=49972&H1070800000 = off
-        #power read <O I="H10708" V="0"/>
-
-        
-
-        #mode  - 1 - automat, 2 - ventilation, 5 - night precooling, 6 - disbalance, 0 - off
