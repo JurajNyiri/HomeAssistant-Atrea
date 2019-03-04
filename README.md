@@ -2,7 +2,7 @@
 Custom component - climate platform - for Atrea ventilation units for Home Assistant
 
 ## Installation:
-Copy file atrea.py to custom_components/climate/atrea.py
+Copy file climate.py to custom_components/atrea/climate.py
 
 ## Usage:
 Add to configuration.yaml:
