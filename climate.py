@@ -315,8 +315,13 @@ class Atrea(ClimateDevice):
         if(fan_percent > 100):
             fan_percent = 100
         if(fan_percent >= 12 and fan_percent <= 100):
-            if(self._air_handling_control == 'Schedule'):
-                self.atrea.setProgram(2)
+            if(self._air_handling_control == 'Schedule' or self.is_on is False):
+                if(self._air_handling_control == 'Manual'):
+                    self.atrea.setProgram(0)
+                else:
+                    self.atrea.setProgram(2)
+
+                self.atrea.setMode(2)
             self.atrea.setPower(fan_percent)
             self.atrea.exec()
             self.manualUpdate()
