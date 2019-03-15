@@ -18,7 +18,8 @@ import re
 
 from datetime import timedelta
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, SUPPORT_TARGET_TEMPERATURE, SUPPORT_OPERATION_MODE, SUPPORT_ON_OFF, SUPPORT_FAN_MODE)
+from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE, SUPPORT_OPERATION_MODE, SUPPORT_ON_OFF, SUPPORT_FAN_MODE)
+from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
 from homeassistant.const import (STATE_ON, STATE_OFF, CONF_NAME, CONF_HOST, CONF_MONITORED_CONDITIONS, CONF_PASSWORD, TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_CUSTOMIZE)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
