@@ -1,0 +1,10 @@
+{
+    "climate.atrea": {
+        "updated_at": "2019-03-15",
+        "local_location": "/custom_components/atrea/climate.py",
+        "version": "2.0",
+        "changelog": "https://github.com/JurajNyiri/HomeAssistant-Atrea/commits/master",
+        "visit_repo": "https://github.com/JurajNyiri/HomeAssistant-Atrea/",
+        "remote_location": "https://raw.githubusercontent.com/JurajNyiri/HomeAssistant-Atrea/master/custom_components/atrea/climate.py"
+    }
+}

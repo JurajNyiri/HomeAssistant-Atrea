@@ -5,11 +5,13 @@ configuration.yaml
 
 climate:
   - platform: atrea
-    name: Ventilation
+    name: name
     host: ip
     password: password
 """
 REQUIREMENTS = ['pyatrea==0.3']
+
+__version__ = "2.0"
 
 import logging
 import json
@@ -27,7 +29,7 @@ from homeassistant.util import Throttle
 MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
 SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE | SUPPORT_OPERATION_MODE | SUPPORT_FAN_MODE | SUPPORT_ON_OFF
 _LOGGER = logging.getLogger(__name__)
-DEFAULT_NAME = "Atrea Ventilation"
+DEFAULT_NAME = "Atrea"
 STATE_MANUAL = 'manual'
 STATE_UNKNOWN = 'unknown'
 CONF_FAN_MODES = 'fan_modes'
