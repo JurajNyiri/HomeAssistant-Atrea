@@ -10,7 +10,7 @@ climate:
     password: password
 """
 
-__version__ = "2.0"
+__version__ = "2.1"
 
 import logging
 import json
