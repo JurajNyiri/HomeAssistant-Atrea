@@ -9,7 +9,6 @@ climate:
     host: ip
     password: password
 """
-REQUIREMENTS = ['pyatrea==0.3']
 
 __version__ = "2.0"
 
