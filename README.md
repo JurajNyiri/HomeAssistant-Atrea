@@ -29,8 +29,11 @@ Optionally, you can specify list of fan modes and list of presets by adding foll
 ```
 
 Complete possible list of fan modes: 
+
 - integers between 12% - 100%
+
 and presets: 
+
 - "Off", "Automat", "Ventilation", "Circulation and Ventilation", "Circulation", "Night precooling", "Disbalance", "Overpressure"
 
 ## Installation using HACS
