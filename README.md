@@ -14,7 +14,7 @@ climate:
     password: [PASSWORD TO ATREA UNIT]
 ```
 
-Optionally you can specify list of fan modes and list of presets by adding this to config:
+Optionally, you can specify list of fan modes and list of presets by adding following to config:
 ```
     customize:
       fan_modes:
@@ -28,11 +28,13 @@ Optionally you can specify list of fan modes and list of presets by adding this 
         - 'Night precooling'
 ```
 
-Complete possible list of fan modes: '12%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '100%'
-and presets: "Off", "Automat", "Ventilation", "Night precooling", "Disbalance"
+Complete possible list of fan modes: 
+- integers between 12% - 100%
+and presets: 
+- "Off", "Automat", "Ventilation", "Circulation and Ventilation", "Circulation", "Night precooling", "Disbalance", "Overpressure"
 
 ## Installation using HACS
-HACS is a community store for Home Assistant. You can instal [HACS](https://github.com/custom-components/hacs) and then install Atrea from the HACS store.
+HACS is a community store for Home Assistant. You can install [HACS](https://github.com/custom-components/hacs) and then install Atrea from the HACS store.
 
 ## Track Updates
 This custom component can be tracked with the help of [custom-lovelace](https://github.com/ciotlosm/custom-lovelace).

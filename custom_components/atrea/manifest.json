@@ -4,5 +4,5 @@
     "documentation": "https://github.com/JurajNyiri/HomeAssistant-Atrea",
     "dependencies": [],
     "codeowners": ["@JurajNyiri"],
-    "requirements": ["pyatrea==0.3"]
+    "requirements": ["pyatrea==0.5"]
   }
