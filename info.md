@@ -7,3 +7,6 @@ climate:
     host: [IP ADDRESS TO ATREA UNIT]
     password: [PASSWORD TO ATREA UNIT]
 ```
+
+For further information see [Github repository](https://github.com/JurajNyiri/HomeAssistant-Atrea/blob/master/README.md)
+
