@@ -10,12 +10,14 @@ climate:
     password: password
 """
 
-__version__ = "4.0"
+__version__ = "4.1"
 
 import logging
 import json
 import voluptuous as vol
 import re
+
+from pyatrea import Atrea
 
 from datetime import timedelta
 
@@ -51,7 +53,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
-    import pyatrea
     host = config.get(CONF_HOST)
     password = config.get(CONF_PASSWORD)
     sensor_name = config.get(CONF_NAME)
@@ -59,15 +60,14 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     fan_list = config.get(CONF_CUSTOMIZE).get(CONF_FAN_MODES, []) or DEFAULT_FAN_MODE_LIST
     preset_list = config.get(CONF_CUSTOMIZE).get(CONF_PRESETS, []) or ALL_PRESET_LIST
 
-    add_devices([Atrea(host, password, sensor_name, fan_list, preset_list, conditions)])
+    add_devices([AtreaDevice(host, password, sensor_name, fan_list, preset_list, conditions)])
 
-class Atrea(ClimateDevice):
+class AtreaDevice(ClimateDevice):
 
     def __init__(self, host, password, sensor_name, fan_list, preset_list, conditions):
-        import pyatrea
         self.host = host
         self.password = password
-        self.atrea = pyatrea.Atrea(self.host,self.password)
+        self.atrea = Atrea(self.host,self.password)
         self._warnings = []
         self._prefixName = sensor_name
         self._current_fan_mode = None
