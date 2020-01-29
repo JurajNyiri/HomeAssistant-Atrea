@@ -10,7 +10,7 @@ climate:
     password: password
 """
 
-__version__ = "4.1"
+__version__ = "4.2"
 
 import logging
 import json
@@ -160,7 +160,7 @@ class AtreaDevice(ClimateDevice):
     
     @property
     def current_temperature(self):
-        return float(self._supply_air_temp)
+        return float(self._inside_temp)
         
     @property
     def min_temp(self):
@@ -188,7 +188,15 @@ class AtreaDevice(ClimateDevice):
         self._alerts = []
         if(status != False):
             self._outside_temp = float(status['I10202'])/10
-            self._inside_temp = float(status['I10203'])/10
+
+            # Depending on configuration of ventilation unit, indoor temp is read from different addresses
+            if(int(status['H10514']) == 1):
+                self._inside_temp = float(status['I10203'])/10
+            elif(int(status['H10514']) == 0):
+                self._inside_temp = float(status['I10207'])/10
+            else:
+                 _LOGGER.warn("Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
+
             self._supply_air_temp = float(status['I10200'])/10
             self._requested_temp = float(status['H10706'])/10
             self._requested_power = int(status['H10714'])
