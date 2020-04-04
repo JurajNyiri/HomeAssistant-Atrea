@@ -1,4 +1,5 @@
 ## Usage:
+
 Add to configuration.yaml:
 
 ```
@@ -9,4 +10,3 @@ climate:
 ```
 
 For further information see [Github repository](https://github.com/JurajNyiri/HomeAssistant-Atrea/blob/master/README.md)
-

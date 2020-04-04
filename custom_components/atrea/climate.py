@@ -10,7 +10,7 @@ climate:
     password: password
 """
 
-__version__ = "4.2"
+__version__ = "4.3"
 
 import logging
 import json
@@ -22,9 +22,11 @@ from pyatrea import Atrea
 from datetime import timedelta
 
 from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
-from homeassistant.components.climate.const import (ATTR_HVAC_MODE, ATTR_FAN_MODE, SUPPORT_PRESET_MODE, SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY, SUPPORT_FAN_MODE)
+from homeassistant.components.climate.const import (ATTR_HVAC_MODE, ATTR_FAN_MODE, SUPPORT_PRESET_MODE,
+                                                    SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY, SUPPORT_FAN_MODE)
 
-from homeassistant.const import (STATE_ON, STATE_OFF, CONF_NAME, CONF_HOST, CONF_MONITORED_CONDITIONS, CONF_PASSWORD, TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_CUSTOMIZE)
+from homeassistant.const import (STATE_ON, STATE_OFF, CONF_NAME, CONF_HOST,
+                                 CONF_MONITORED_CONDITIONS, CONF_PASSWORD, TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_CUSTOMIZE)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
@@ -40,8 +42,10 @@ CUSTOMIZE_SCHEMA = vol.Schema({
     vol.Optional(CONF_FAN_MODES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_PRESETS): vol.All(cv.ensure_list, [cv.string])
 })
-DEFAULT_FAN_MODE_LIST = ['12%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '100%']
-ALL_PRESET_LIST = ["Off", "Automat", "Ventilation", "Circulation and Ventilation", "Circulation", "Night precooling", "Disbalance", "Overpressure"]
+DEFAULT_FAN_MODE_LIST = ['12%', '20%', '30%', '40%',
+                         '50%', '60%', '70%', '80%', '90%', '100%']
+ALL_PRESET_LIST = ["Off", "Automat", "Ventilation", "Circulation and Ventilation",
+                   "Circulation", "Night precooling", "Disbalance", "Overpressure"]
 HVAC_MODES = [HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -57,17 +61,21 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     password = config.get(CONF_PASSWORD)
     sensor_name = config.get(CONF_NAME)
     conditions = config.get(CONF_MONITORED_CONDITIONS)
-    fan_list = config.get(CONF_CUSTOMIZE).get(CONF_FAN_MODES, []) or DEFAULT_FAN_MODE_LIST
-    preset_list = config.get(CONF_CUSTOMIZE).get(CONF_PRESETS, []) or ALL_PRESET_LIST
+    fan_list = config.get(CONF_CUSTOMIZE).get(
+        CONF_FAN_MODES, []) or DEFAULT_FAN_MODE_LIST
+    preset_list = config.get(CONF_CUSTOMIZE).get(
+        CONF_PRESETS, []) or ALL_PRESET_LIST
 
-    add_devices([AtreaDevice(host, password, sensor_name, fan_list, preset_list, conditions)])
+    add_devices([AtreaDevice(host, password, sensor_name,
+                             fan_list, preset_list, conditions)])
+
 
 class AtreaDevice(ClimateDevice):
 
     def __init__(self, host, password, sensor_name, fan_list, preset_list, conditions):
         self.host = host
         self.password = password
-        self.atrea = Atrea(self.host,self.password)
+        self.atrea = Atrea(self.host, self.password)
         self._warnings = []
         self._prefixName = sensor_name
         self._current_fan_mode = None
@@ -89,9 +97,8 @@ class AtreaDevice(ClimateDevice):
             for i, preset_supported in self.atrea.getSupportedModes().items():
                 if preset_supported and ALL_PRESET_LIST[i] == required_preset:
                     self._preset_list.append(ALL_PRESET_LIST[i])
-                    
+
         self.update()
-        
 
     @property
     def should_poll(self):
@@ -116,7 +123,7 @@ class AtreaDevice(ClimateDevice):
     @property
     def name(self):
         return '{}'.format(self._prefixName)
-    
+
     @property
     def device_state_attributes(self):
         attributes = {}
@@ -146,7 +153,7 @@ class AtreaDevice(ClimateDevice):
     @property
     def hvac_mode(self):
         return self._current_hvac_mode
-    
+
     @property
     def preset_mode(self):
         if self._current_preset in (0, 1, 2, 3, 4, 5, 6, 7):
@@ -157,15 +164,15 @@ class AtreaDevice(ClimateDevice):
     @property
     def preset_modes(self):
         return self._preset_list
-    
+
     @property
     def current_temperature(self):
         return float(self._inside_temp)
-        
+
     @property
     def min_temp(self):
         return 10
-        
+
     @property
     def max_temp(self):
         return 40
@@ -173,7 +180,7 @@ class AtreaDevice(ClimateDevice):
     @property
     def fan_mode(self):
         return self._current_fan_mode
-    
+
     @property
     def fan_modes(self):
         return self._fan_list
@@ -187,7 +194,10 @@ class AtreaDevice(ClimateDevice):
         self._warnings = []
         self._alerts = []
         if(status != False):
-            self._outside_temp = float(status['I10202'])/10
+            if(float(status['I10202']) > 6550):
+                self._outside_temp = (float(status['I10202'])-6550)/10 * -1
+            else:
+                self._outside_temp = float(status['I10202'])/10
 
             # Depending on configuration of ventilation unit, indoor temp is read from different addresses
             if(int(status['H10514']) == 1):
@@ -195,7 +205,8 @@ class AtreaDevice(ClimateDevice):
             elif(int(status['H10514']) == 0):
                 self._inside_temp = float(status['I10207'])/10
             else:
-                 _LOGGER.warn("Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
+                _LOGGER.warn(
+                    "Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
 
             self._supply_air_temp = float(status['I10200'])/10
             self._requested_temp = float(status['H10706'])/10
@@ -230,7 +241,6 @@ class AtreaDevice(ClimateDevice):
             else:
                 # Unknown
                 self._current_preset = None
-                
 
             if(int(status['H10701']) == 0):
                 self.air_handling_control = 'Manual'
@@ -248,8 +258,9 @@ class AtreaDevice(ClimateDevice):
                 else:
                     self._current_hvac_mode = HVAC_MODE_FAN_ONLY
             else:
-                self.air_handling_control = "Unknown (" + str(status['H10701']) + ")"
-            
+                self.air_handling_control = "Unknown (" + \
+                    str(status['H10701']) + ")"
+
             params = self.atrea.getParams()
             for warning in params['warning']:
                 if status[warning] == "1":
@@ -317,15 +328,15 @@ class AtreaDevice(ClimateDevice):
         elif(hvac_mode == HVAC_MODE_OFF):
             self.turn_off()
             self._current_hvac_mode = HVAC_MODE_OFF
-            
+
         if(((self.air_handling_control == 'Manual' and program != 0)
-            or (self.air_handling_control == 'Schedule' and program != 1)
-            or (self.air_handling_control == 'Temporary' and program != 2))
-            and program != None):
+                or (self.air_handling_control == 'Schedule' and program != 1)
+                or (self.air_handling_control == 'Temporary' and program != 2))
+                and program != None):
             self.atrea.setProgram(program)
 
         if((mode != False and self._current_preset != mode)
-             or self.air_handling_control == 'Schedule'):
+           or self.air_handling_control == 'Schedule'):
             self.atrea.setMode(mode)
 
         self.atrea.exec()
@@ -359,16 +370,16 @@ class AtreaDevice(ClimateDevice):
             program = 0
         else:
             _LOGGER.warn("Chosen preset=%s(%s) is incorrect preset.", str(preset),
-                      str(mode))
+                         str(mode))
 
         if(((self.air_handling_control == 'Manual' and program != 0)
-            or (self.air_handling_control == 'Schedule' and program != 1)
-            or (self.air_handling_control == 'Temporary' and program != 2))
-            and program != None):
+                or (self.air_handling_control == 'Schedule' and program != 1)
+                or (self.air_handling_control == 'Temporary' and program != 2))
+                and program != None):
             self.atrea.setProgram(program)
 
         if((mode != False and self._current_preset != mode)
-             or self.air_handling_control == 'Schedule'):
+           or self.air_handling_control == 'Schedule'):
             self.atrea.setMode(mode)
 
         self.atrea.exec()
@@ -379,10 +390,10 @@ class AtreaDevice(ClimateDevice):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        elif(temperature >= 10 and temperature<= 40):
+        elif(temperature >= 10 and temperature <= 40):
             self.atrea.setTemperature(temperature)
             self.atrea.exec()
             self.manualUpdate()
         else:
-            _LOGGER.warn("Chosen temperature=%s is incorrect. It needs to be between 10 and 40.", str(temperature))
-
+            _LOGGER.warn(
+                "Chosen temperature=%s is incorrect. It needs to be between 10 and 40.", str(temperature))
