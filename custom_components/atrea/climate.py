@@ -10,7 +10,7 @@ climate:
     password: password
 """
 
-__version__ = "4.3"
+__version__ = "4.3.1"
 
 import logging
 import json
@@ -21,7 +21,13 @@ from pyatrea import Atrea
 
 from datetime import timedelta
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
+try:
+    from homeassistant.components.climate import (
+        ClimateEntity, PLATFORM_SCHEMA)
+except ImportError:
+    from homeassistant.components.climate import (
+        ClimateDevice as ClimateEntity, PLATFORM_SCHEMA)
+
 from homeassistant.components.climate.const import (ATTR_HVAC_MODE, ATTR_FAN_MODE, SUPPORT_PRESET_MODE,
                                                     SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY, SUPPORT_FAN_MODE)
 
@@ -70,7 +76,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                              fan_list, preset_list, conditions)])
 
 
-class AtreaDevice(ClimateDevice):
+class AtreaDevice(ClimateEntity):
 
     def __init__(self, host, password, sensor_name, fan_list, preset_list, conditions):
         self.host = host
