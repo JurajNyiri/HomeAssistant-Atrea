@@ -96,7 +96,7 @@ class AtreaDevice(ClimateEntity):
         self._current_preset = None
         self._current_hvac_mode = None
         self._unit = "Status"
-        self._icon = "mdi:alert-decagram"
+        self._icon = 'mdi:fan'
         self.air_handling_control = None
 
         for required_preset in preset_list:
@@ -116,6 +116,17 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def icon(self):
+        if self._alerts:
+            self._icon = 'mdi:alert-decagram'
+        elif self._warnings:
+            self._icon = 'mdi:fan-alert'
+        elif self._current_hvac_mode == HVAC_MODE_OFF:
+            self._icon = 'mdi:fan-off'
+        elif self._current_preset == 4:
+            self._icon = 'mdi:cached'
+        else:
+            self._icon = 'mdi:fan'
+
         return self._icon
 
     @property
