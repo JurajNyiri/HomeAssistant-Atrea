@@ -17,7 +17,7 @@ import json
 import voluptuous as vol
 import re
 
-from pyatrea import Atrea
+from .pyatrea import Atrea
 
 from datetime import timedelta
 
@@ -56,7 +56,7 @@ HVAC_MODES = [HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
-    vol.Required(CONF_PASSWORD): cv.string,
+    vol.Optional(CONF_PASSWORD): cv.string,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_CUSTOMIZE, default={}): CUSTOMIZE_SCHEMA
 })
@@ -196,76 +196,106 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def manualUpdate(self):
-        status = self.atrea.getStatus()
+        status = self.atrea.refreshStatus()
         self._warnings = []
         self._alerts = []
         if(status != False):
-            if(float(status['I10202']) > 6550):
-                self._outside_temp = (float(status['I10202'])-6550)/10 * -1
-            else:
-                self._outside_temp = float(status['I10202'])/10
-
+            if('I10202' in status):
+                if(float(status['I10202']) > 6550):
+                    self._outside_temp = (float(status['I10202'])-6550)/10 * -1
+                else:
+                    self._outside_temp = float(status['I10202'])/10
+            elif('I00202' in status):
+                if(self.atrea.getValue('I00202') == 126.0):
+                    if(self.atrea.getValue('H00511') == 1):
+                        self._outside_temp = self.atrea.getValue('I00200')
+                    elif(self.atrea.getValue('H00511') == 1):
+                        self._outside_temp = self.atrea.getValue('I00201')
+                else:
+                    self._outside_temp = self.atrea.getValue('I00202')
+            
             # Depending on configuration of ventilation unit, indoor temp is read from different addresses
-            if(int(status['H10514']) == 1):
-                self._inside_temp = float(status['I10203'])/10
-            elif(int(status['H10514']) == 0):
-                self._inside_temp = float(status['I10207'])/10
-            else:
-                _LOGGER.warn(
-                    "Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
-
-            self._supply_air_temp = float(status['I10200'])/10
-            self._requested_temp = float(status['H10706'])/10
-            self._requested_power = int(status['H10714'])
-            self._current_fan_mode = str(self._requested_power)+"%"
-
-            if(int(status['H10705']) == 0):
-                # Off
-                self._current_hvac_mode = HVAC_MODE_OFF
-                self._current_preset = 0
-            elif(int(status['H10705']) == 1):
-                # Automat
-                self._current_preset = 1
-            elif(int(status['H10705']) == 2):
-                # Ventilation
-                self._current_preset = 2
-            elif(int(status['H10705']) == 3):
-                # Circulation and Ventilation
-                self._current_preset = 3
-            elif(int(status['H10705']) == 4):
-                # Circulation
-                self._current_preset = 4
-            elif(int(status['H10705']) == 5):
-                # Night precooling
-                self._current_preset = 5
-            elif(int(status['H10705']) == 6):
-                # Disbalance
-                self._current_preset = 6
-            elif(int(status['H10705']) == 7):
-                # Overpressure
-                self._current_preset = 7
-            else:
-                # Unknown
-                self._current_preset = None
-
-            if(int(status['H10701']) == 0):
-                self.air_handling_control = 'Manual'
-                if(int(status['H10705']) == 0):
-                    self._current_hvac_mode = HVAC_MODE_OFF
+            if('H10514' in status):
+                if(int(status['H10514']) == 1):
+                    self._inside_temp = float(status['I10203'])/10
+                elif(int(status['H10514']) == 0):
+                    self._inside_temp = float(status['I10207'])/10
                 else:
-                    self._current_hvac_mode = HVAC_MODE_FAN_ONLY
-            elif(int(status['H10701']) == 1):
-                self.air_handling_control = 'Schedule'
-                self._current_hvac_mode = HVAC_MODE_AUTO
-            elif(int(status['H10701']) == 2):
-                self.air_handling_control = 'Temporary'
-                if(int(status['H10705']) == 0):
-                    self._current_hvac_mode = HVAC_MODE_OFF
-                else:
-                    self._current_hvac_mode = HVAC_MODE_FAN_ONLY
+                    _LOGGER.warn(
+                        "Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
+            elif('I00210' in status):
+                self._inside_temp = self.atrea.getValue('I00210')
+
+            if('I10200' in status):
+                self._supply_air_temp = float(status['I10200'])/10
+            elif('I00200' in status):
+                self._supply_air_temp = self.atrea.getValue('I00200')
+            
+            if('H10706' in status):
+                self._requested_temp = float(status['H10706'])/10
+            elif('H01006' in status):
+                self._requested_temp = self.atrea.getValue('H01006')
+            
+            if('H10714' in status):
+                self._requested_power = int(status['H10714'])
+            elif('' in status):
+                self._requested_power = self.atrea.getValue('H01005')
+            
+            if('H01001' in status):
+                self._current_fan_mode = str(self.atrea.getValue('H01001'))+"%"
             else:
-                self.air_handling_control = "Unknown (" + \
-                    str(status['H10701']) + ")"
+                self._current_fan_mode = str(self._requested_power)+"%"
+
+            if('H10705' in status):
+                if(int(status['H10705']) == 0):
+                    # Off
+                    self._current_hvac_mode = HVAC_MODE_OFF
+                    self._current_preset = 0
+                elif(int(status['H10705']) == 1):
+                    # Automat
+                    self._current_preset = 1
+                elif(int(status['H10705']) == 2):
+                    # Ventilation
+                    self._current_preset = 2
+                elif(int(status['H10705']) == 3):
+                    # Circulation and Ventilation
+                    self._current_preset = 3
+                elif(int(status['H10705']) == 4):
+                    # Circulation
+                    self._current_preset = 4
+                elif(int(status['H10705']) == 5):
+                    # Night precooling
+                    self._current_preset = 5
+                elif(int(status['H10705']) == 6):
+                    # Disbalance
+                    self._current_preset = 6
+                elif(int(status['H10705']) == 7):
+                    # Overpressure
+                    self._current_preset = 7
+                else:
+                    # Unknown
+                    self._current_preset = None
+            elif('H01004' in status):
+                self._current_preset = int(self.atrea.getValue('H01004'))
+
+            # if(int(status['H10701']) == 0):
+            #     self.air_handling_control = 'Manual'
+            #     if(int(status['H10705']) == 0):
+            #         self._current_hvac_mode = HVAC_MODE_OFF
+            #     else:
+            #         self._current_hvac_mode = HVAC_MODE_FAN_ONLY
+            # elif(int(status['H10701']) == 1):
+            #     self.air_handling_control = 'Schedule'
+            #     self._current_hvac_mode = HVAC_MODE_AUTO
+            # elif(int(status['H10701']) == 2):
+            #     self.air_handling_control = 'Temporary'
+            #     if(int(status['H10705']) == 0):
+            #         self._current_hvac_mode = HVAC_MODE_OFF
+            #     else:
+            #         self._current_hvac_mode = HVAC_MODE_FAN_ONLY
+            # else:
+            #     self.air_handling_control = "Unknown (" + \
+            #         str(status['H10701']) + ")"
 
             params = self.atrea.getParams()
             for warning in params['warning']:
