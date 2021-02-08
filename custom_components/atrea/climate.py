@@ -389,43 +389,18 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def set_preset_mode(self, preset):
-        mode = False
-        program = False
-        if preset == "Off":
+        mode = None
+        try:
+            mode = AtreaMode(ALL_PRESET_LIST.index(preset))
+        except ValueError:
+            _LOGGER.warn("Chosen preset=%s is incorrect preset.", str(preset))
+            return
+
+        if mode == AtreaMode.OFF:
             self.turn_off()
-        elif preset == "Automatic":
-            mode = 1
-            program = 0
-        elif preset == "Ventilation":
-            mode = 2
-            program = 0
-        elif preset == "Circulation and Ventilation":
-            mode = 3
-            program = 0
-        elif preset == "Circulation":
-            mode = 4
-            program = 0
-        elif preset == "Night precooling":
-            mode = 5
-            program = 0
-        elif preset == "Disbalance":
-            mode = 6
-            program = 0
-        elif preset == "Overpressure":
-            mode = 7
-            program = 0
-        else:
-            _LOGGER.warn("Chosen preset=%s(%s) is incorrect preset.", str(preset),
-                         str(mode))
-
-        if(((self.air_handling_control == 'Manual' and program != 0)
-                or (self.air_handling_control == 'Schedule' and program != 1)
-                or (self.air_handling_control == 'Temporary' and program != 2))
-                and program != None):
-            self.atrea.setProgram(program)
-
-        if((mode != False and self._current_preset != mode)
-           or self.air_handling_control == 'Schedule'):
+        if self.atrea.getProgram() != AtreaProgram.TEMPORARY:
+            self.atrea.setProgram(AtreaProgram.TEMPORARY)
+        if mode != self.atrea.getMode():
             self.atrea.setMode(mode)
 
         self.atrea.exec()
