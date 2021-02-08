@@ -233,7 +233,7 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def manualUpdate(self):
-        status = self.atrea.refreshStatus()
+        status = self.atrea.getStatus(False)
         self._warnings = []
         self._alerts = []
         if(status != False):
