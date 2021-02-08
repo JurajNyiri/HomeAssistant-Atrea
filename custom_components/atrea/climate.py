@@ -17,7 +17,7 @@ import json
 import voluptuous as vol
 import re
 
-from .pyatrea import Atrea, AtreaProgram, AtreaMode
+from pyatrea import Atrea, AtreaProgram, AtreaMode
 
 from datetime import timedelta
 
