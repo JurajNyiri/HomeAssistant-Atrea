@@ -110,11 +110,11 @@ class AtreaDevice(ClimateEntity):
         self._current_fan_mode = None
         self._alerts = []
         self._preset_list = []
-        self._outside_temp = ""
-        self._inside_temp = ""
-        self._supply_air_temp = ""
-        self._requested_temp = ""
-        self._requested_power = ""
+        self._outside_temp = 0.0
+        self._inside_temp = 0.0
+        self._supply_air_temp = 0.0
+        self._requested_temp = 0.0
+        self._requested_power = None
         self._fan_list = fan_list
         self._current_preset = None
         self._current_hvac_mode = None
@@ -275,7 +275,7 @@ class AtreaDevice(ClimateEntity):
             
             if('H10714' in status):
                 self._requested_power = int(status['H10714'])
-            elif('' in status):
+            elif('H01005' in status):
                 self._requested_power = int(self.atrea.getValue('H01005'))
             
             if('H01001' in status):
