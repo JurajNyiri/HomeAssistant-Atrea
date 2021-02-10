@@ -326,7 +326,8 @@ class AtreaDevice(ClimateEntity):
         if(fan_percent > 100):
             fan_percent = 100
         if(fan_percent >= 12 and fan_percent <= 100):
-            self.atrea.setProgram(AtreaProgram.TEMPORARY)
+            if self.atrea.getProgram() == AtreaProgram.WEEKLY:
+                self.atrea.setProgram(AtreaProgram.TEMPORARY)
             self.atrea.setPower(fan_percent)
             self.atrea.exec()
             self.manualUpdate()
@@ -361,27 +362,23 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def set_hvac_mode(self, hvac_mode):
-        mode = False
-        program = False
+        mode = None
+        program = None
         if(hvac_mode == HVAC_MODE_AUTO):
-            mode = False
             self._current_hvac_mode = HVAC_MODE_AUTO
-            program = 1
+            program = AtreaProgram.WEEKLY
         elif(hvac_mode == HVAC_MODE_FAN_ONLY):
-            mode = 2
-            program = 0
+            mode = AtreaMode.VENTILATION
+            program = AtreaProgram.MANUAL
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
         elif(hvac_mode == HVAC_MODE_OFF):
             self.turn_off()
             self._current_hvac_mode = HVAC_MODE_OFF
 
-        if(((self.air_handling_control == 'Manual' and program != 0)
-                or (self.air_handling_control == 'Schedule' and program != 1)
-                or (self.air_handling_control == 'Temporary' and program != 2))
-                and program != None):
+        if program != None and program != self.atrea.getProgram():
             self.atrea.setProgram(program)
 
-        if((mode != False and self._current_preset != mode)
+        if((mode != None and self._current_preset != mode)
            or self.air_handling_control == 'Schedule'):
             self.atrea.setMode(mode)
 
@@ -398,7 +395,7 @@ class AtreaDevice(ClimateEntity):
 
         if mode == AtreaMode.OFF:
             self.turn_off()
-        if self.atrea.getProgram() != AtreaProgram.TEMPORARY:
+        if self.atrea.getProgram() == AtreaProgram.WEEKLY:
             self.atrea.setProgram(AtreaProgram.TEMPORARY)
         if mode != self.atrea.getMode():
             self.atrea.setMode(mode)
