@@ -17,7 +17,7 @@ import json
 import voluptuous as vol
 import re
 
-from pyatrea import Atrea
+from pyatrea import Atrea, AtreaProgram, AtreaMode
 
 from datetime import timedelta
 
@@ -50,13 +50,37 @@ CUSTOMIZE_SCHEMA = vol.Schema({
 })
 DEFAULT_FAN_MODE_LIST = ['12%', '20%', '30%', '40%',
                          '50%', '60%', '70%', '80%', '90%', '100%']
-ALL_PRESET_LIST = ["Off", "Automat", "Ventilation", "Circulation and Ventilation",
-                   "Circulation", "Night precooling", "Disbalance", "Overpressure"]
+ALL_PRESET_LIST = ["Off", "Automatic", "Ventilation", "Circulation and Ventilation",
+                   "Circulation", "Night precooling", "Disbalance", "Overpressure",
+                   "Periodic ventilation", "Startup", "Rundown", "Defrosting", "External", "HP defrosting",
+                   "IN1", "IN2", "D1", "D2", "D3", "D4"]
+
+ICONS = {
+    AtreaMode.OFF: "mdi:fan-off",
+    AtreaMode.AUTOMATIC: "mdi:fan",
+    AtreaMode.VENTILATION: "mdi:fan-chevron-up",
+    AtreaMode.CIRCULATION_AND_VENTILATION: "mdi:fan",
+    AtreaMode.CIRCULATION: "mdi:fan-chevron-down",
+    AtreaMode.NIGHT_PRECOOLING: "mdi:fan-speed-1",
+    AtreaMode.DISBALANCE: "mdi:fan-speed-2",
+    AtreaMode.OVERPRESSURE: "mdi:fan-speed-3",
+    AtreaMode.STARTUP: "mdi:chevron-up",
+    AtreaMode.RUNDOWN: "mdi:chevron-down",
+    AtreaMode.DEFROSTING: "mdi:car-defrost-rear",
+    AtreaMode.EXTERNAL: "mdi:fan-alert",
+    AtreaMode.HP_DEFROSTING: "mdi:car-defrost-front",
+    AtreaMode.IN1: "mdi:fan-chevron-up",
+    AtreaMode.IN2: "mdi:fan-chevron-up",
+    AtreaMode.D1: "mdi:fan-chevron-up",
+    AtreaMode.D2: "mdi:fan-chevron-up",
+    AtreaMode.D3: "mdi:fan-chevron-up",
+    AtreaMode.D4: "mdi:fan-chevron-up" }
+
 HVAC_MODES = [HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
-    vol.Required(CONF_PASSWORD): cv.string,
+    vol.Optional(CONF_PASSWORD): cv.string,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_CUSTOMIZE, default={}): CUSTOMIZE_SCHEMA
 })
@@ -72,8 +96,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     preset_list = config.get(CONF_CUSTOMIZE).get(
         CONF_PRESETS, []) or ALL_PRESET_LIST
 
-    add_devices([AtreaDevice(host, password, sensor_name,
-                             fan_list, preset_list, conditions)])
+    add_devices([AtreaDevice(host, password, sensor_name, fan_list, preset_list, conditions)])
 
 
 class AtreaDevice(ClimateEntity):
@@ -87,16 +110,15 @@ class AtreaDevice(ClimateEntity):
         self._current_fan_mode = None
         self._alerts = []
         self._preset_list = []
-        self._outside_temp = ""
-        self._inside_temp = ""
-        self._supply_air_temp = ""
-        self._requested_temp = ""
-        self._requested_power = ""
+        self._outside_temp = 0.0
+        self._inside_temp = 0.0
+        self._supply_air_temp = 0.0
+        self._requested_temp = 0.0
+        self._requested_power = None
         self._fan_list = fan_list
         self._current_preset = None
         self._current_hvac_mode = None
         self._unit = "Status"
-        self._icon = "mdi:alert-decagram"
         self.air_handling_control = None
 
         for required_preset in preset_list:
@@ -104,6 +126,7 @@ class AtreaDevice(ClimateEntity):
                 if preset_supported and ALL_PRESET_LIST[i] == required_preset:
                     self._preset_list.append(ALL_PRESET_LIST[i])
 
+        self._userLabels = self.atrea.loadUserLabels()
         self.update()
 
     @property
@@ -116,7 +139,14 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def icon(self):
-        return self._icon
+        if len(self._alerts) > 0:
+            return "mdi:fan-alert"
+        elif self.fan_mode == "0%":
+            return "mdi:fan-off"
+        elif self._current_preset in ICONS:
+            return ICONS[self._current_preset]
+        else:
+            return "mdi:fan"
 
     @property
     def state(self):
@@ -141,6 +171,7 @@ class AtreaDevice(ClimateEntity):
         attributes['requested_power'] = self._requested_power
         attributes['warnings'] = self._warnings
         attributes['alerts'] = self._alerts
+        attributes['program'] = self.air_handling_control
 
         return attributes
 
@@ -162,7 +193,9 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def preset_mode(self):
-        if self._current_preset in (0, 1, 2, 3, 4, 5, 6, 7):
+        if self._current_preset.name and self._current_preset.name in self._userLabels:
+            return self._userLabels[self._current_preset.name]
+        elif self._current_preset < len(ALL_PRESET_LIST):
             return ALL_PRESET_LIST[self._current_preset]
         else:
             return STATE_UNKNOWN
@@ -190,82 +223,88 @@ class AtreaDevice(ClimateEntity):
     @property
     def fan_modes(self):
         return self._fan_list
-
+    
+    @property
+    def program(self):
+        return self.air_handling_control
+    
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     def update(self):
         self.manualUpdate()
 
     def manualUpdate(self):
-        status = self.atrea.getStatus()
+        status = self.atrea.getStatus(False)
         self._warnings = []
         self._alerts = []
         if(status != False):
-            if(float(status['I10202']) > 6550):
-                self._outside_temp = (float(status['I10202'])-6550)/10 * -1
-            else:
-                self._outside_temp = float(status['I10202'])/10
-
+            if('I10202' in status):
+                if(float(status['I10202']) > 6550):
+                    self._outside_temp = (float(status['I10202'])-6550)/10 * -1
+                else:
+                    self._outside_temp = float(status['I10202'])/10
+            elif('I00202' in status):
+                if(self.atrea.getValue('I00202') == 126.0):
+                    if(self.atrea.getValue('H00511') == 1):
+                        self._outside_temp = self.atrea.getValue('I00200')
+                    elif(self.atrea.getValue('H00511') == 1):
+                        self._outside_temp = self.atrea.getValue('I00201')
+                else:
+                    self._outside_temp = self.atrea.getValue('I00202')
+            
             # Depending on configuration of ventilation unit, indoor temp is read from different addresses
-            if(int(status['H10514']) == 1):
-                self._inside_temp = float(status['I10203'])/10
-            elif(int(status['H10514']) == 0):
-                self._inside_temp = float(status['I10207'])/10
+            if('H10514' in status):
+                if(int(status['H10514']) == 1):
+                    self._inside_temp = float(status['I10203'])/10
+                elif(int(status['H10514']) == 0):
+                    self._inside_temp = float(status['I10207'])/10
+                else:
+                    _LOGGER.warn(
+                        "Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
+            elif('I00210' in status):
+                self._inside_temp = self.atrea.getValue('I00210')
+
+            if('I10200' in status):
+                self._supply_air_temp = float(status['I10200'])/10
+            elif('I00200' in status):
+                self._supply_air_temp = self.atrea.getValue('I00200')
+            
+            if('H10706' in status):
+                self._requested_temp = float(status['H10706'])/10
+            elif('H01006' in status):
+                self._requested_temp = self.atrea.getValue('H01006')
+            
+            if('H10714' in status):
+                self._requested_power = int(status['H10714'])
+            elif('H01005' in status):
+                self._requested_power = int(self.atrea.getValue('H01005'))
+            
+            if('H01001' in status):
+                self._current_fan_mode = str(int(self.atrea.getValue('H01001')))+"%"
             else:
-                _LOGGER.warn(
-                    "Indoor sensor not supported yet. Please contact repository owner with information about your unit.")
+                self._current_fan_mode = str(self._requested_power)+"%"
 
-            self._supply_air_temp = float(status['I10200'])/10
-            self._requested_temp = float(status['H10706'])/10
-            self._requested_power = int(status['H10714'])
-            self._current_fan_mode = str(self._requested_power)+"%"
-
-            if(int(status['H10705']) == 0):
-                # Off
+            self._current_preset = self.atrea.getMode()
+            if(self._current_preset == AtreaMode.OFF):
                 self._current_hvac_mode = HVAC_MODE_OFF
-                self._current_preset = 0
-            elif(int(status['H10705']) == 1):
-                # Automat
-                self._current_preset = 1
-            elif(int(status['H10705']) == 2):
-                # Ventilation
-                self._current_preset = 2
-            elif(int(status['H10705']) == 3):
-                # Circulation and Ventilation
-                self._current_preset = 3
-            elif(int(status['H10705']) == 4):
-                # Circulation
-                self._current_preset = 4
-            elif(int(status['H10705']) == 5):
-                # Night precooling
-                self._current_preset = 5
-            elif(int(status['H10705']) == 6):
-                # Disbalance
-                self._current_preset = 6
-            elif(int(status['H10705']) == 7):
-                # Overpressure
-                self._current_preset = 7
-            else:
-                # Unknown
-                self._current_preset = None
 
-            if(int(status['H10701']) == 0):
+            program = self.atrea.getProgram()
+            if(program == AtreaProgram.MANUAL):
                 self.air_handling_control = 'Manual'
-                if(int(status['H10705']) == 0):
+                if(self.atrea.getValue('H10705') == 0):
                     self._current_hvac_mode = HVAC_MODE_OFF
                 else:
                     self._current_hvac_mode = HVAC_MODE_FAN_ONLY
-            elif(int(status['H10701']) == 1):
+            elif(program == AtreaProgram.WEEKLY):
                 self.air_handling_control = 'Schedule'
                 self._current_hvac_mode = HVAC_MODE_AUTO
-            elif(int(status['H10701']) == 2):
+            elif(program == AtreaProgram.TEMPORARY):
                 self.air_handling_control = 'Temporary'
-                if(int(status['H10705']) == 0):
+                if(self.atrea.getValue('H10705') == 0):
                     self._current_hvac_mode = HVAC_MODE_OFF
                 else:
                     self._current_hvac_mode = HVAC_MODE_FAN_ONLY
             else:
-                self.air_handling_control = "Unknown (" + \
-                    str(status['H10701']) + ")"
+                self.air_handling_control = "Unknown (" + str(program) + ")"
 
             params = self.atrea.getParams()
             for warning in params['warning']:
@@ -287,6 +326,8 @@ class AtreaDevice(ClimateEntity):
         if(fan_percent > 100):
             fan_percent = 100
         if(fan_percent >= 12 and fan_percent <= 100):
+            if self.atrea.getProgram() == AtreaProgram.WEEKLY:
+                self.atrea.setProgram(AtreaProgram.TEMPORARY)
             self.atrea.setPower(fan_percent)
             self.atrea.exec()
             self.manualUpdate()
@@ -295,53 +336,49 @@ class AtreaDevice(ClimateEntity):
 
     def turn_on(self):
         if(self.air_handling_control == 'Manual'):
-            self.atrea.setProgram(0)
+            self.atrea.setProgram(AtreaProgram.MANUAL)
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
         elif(self.air_handling_control == 'Schedule'):
-            self.atrea.setProgram(1)
+            self.atrea.setProgram(AtreaProgram.WEEKLY)
             self._current_hvac_mode = HVAC_MODE_AUTO
         elif(self.air_handling_control == 'Temporary'):
-            self.atrea.setProgram(2)
+            self.atrea.setProgram(AtreaProgram.TEMPORARY)
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
-        self.atrea.setMode(2)
+        self.atrea.setMode(AtreaMode.VENTILATION)
         self.atrea.exec()
         self.manualUpdate()
 
     def turn_off(self):
         if(self.air_handling_control == 'Manual'):
-            self.atrea.setProgram(0)
+            self.atrea.setProgram(AtreaProgram.MANUAL)
         elif(self.air_handling_control == 'Temporary'):
-            self.atrea.setProgram(2)
+            self.atrea.setProgram(AtreaProgram.TEMPORARY)
         else:
-            self.atrea.setProgram(1)
+            self.atrea.setProgram(AtreaProgram.WEEKLY)
 
         self._current_hvac_mode = HVAC_MODE_OFF
-        self.atrea.setMode(0)
+        self.atrea.setMode(AtreaMode.OFF)
         self.atrea.exec()
         self.manualUpdate()
 
     def set_hvac_mode(self, hvac_mode):
-        mode = False
-        program = False
+        mode = None
+        program = None
         if(hvac_mode == HVAC_MODE_AUTO):
-            mode = False
             self._current_hvac_mode = HVAC_MODE_AUTO
-            program = 1
+            program = AtreaProgram.WEEKLY
         elif(hvac_mode == HVAC_MODE_FAN_ONLY):
-            mode = 2
-            program = 0
+            mode = AtreaMode.VENTILATION
+            program = AtreaProgram.MANUAL
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
         elif(hvac_mode == HVAC_MODE_OFF):
             self.turn_off()
             self._current_hvac_mode = HVAC_MODE_OFF
 
-        if(((self.air_handling_control == 'Manual' and program != 0)
-                or (self.air_handling_control == 'Schedule' and program != 1)
-                or (self.air_handling_control == 'Temporary' and program != 2))
-                and program != None):
+        if program != None and program != self.atrea.getProgram():
             self.atrea.setProgram(program)
 
-        if((mode != False and self._current_preset != mode)
+        if((mode != None and self._current_preset != mode)
            or self.air_handling_control == 'Schedule'):
             self.atrea.setMode(mode)
 
@@ -349,43 +386,18 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def set_preset_mode(self, preset):
-        mode = False
-        program = False
-        if preset == "Off":
+        mode = None
+        try:
+            mode = AtreaMode(ALL_PRESET_LIST.index(preset))
+        except ValueError:
+            _LOGGER.warn("Chosen preset=%s is incorrect preset.", str(preset))
+            return
+
+        if mode == AtreaMode.OFF:
             self.turn_off()
-        elif preset == "Automat":
-            mode = 1
-            program = 0
-        elif preset == "Ventilation":
-            mode = 2
-            program = 0
-        elif preset == "Circulation and Ventilation":
-            mode = 3
-            program = 0
-        elif preset == "Circulation":
-            mode = 4
-            program = 0
-        elif preset == "Night precooling":
-            mode = 5
-            program = 0
-        elif preset == "Disbalance":
-            mode = 6
-            program = 0
-        elif preset == "Overpressure":
-            mode = 7
-            program = 0
-        else:
-            _LOGGER.warn("Chosen preset=%s(%s) is incorrect preset.", str(preset),
-                         str(mode))
-
-        if(((self.air_handling_control == 'Manual' and program != 0)
-                or (self.air_handling_control == 'Schedule' and program != 1)
-                or (self.air_handling_control == 'Temporary' and program != 2))
-                and program != None):
-            self.atrea.setProgram(program)
-
-        if((mode != False and self._current_preset != mode)
-           or self.air_handling_control == 'Schedule'):
+        if self.atrea.getProgram() == AtreaProgram.WEEKLY:
+            self.atrea.setProgram(AtreaProgram.TEMPORARY)
+        if mode != self.atrea.getMode():
             self.atrea.setMode(mode)
 
         self.atrea.exec()
