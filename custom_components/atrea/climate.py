@@ -238,10 +238,10 @@ class AtreaDevice(ClimateEntity):
         self._alerts = []
         if(status != False):
             if('I10202' in status):
-                if(float(status['I10202']) > 6550):
-                    self._outside_temp = (float(status['I10202'])-6550)/10 * -1
+                if(float(status['I10211']) > 1300):
+                    self._outside_temp = round(((50-(float(status['I10211'])-65036)/10)*-1),1)
                 else:
-                    self._outside_temp = float(status['I10202'])/10
+                    self._outside_temp = float(status['I10211'])/10
             elif('I00202' in status):
                 if(self.atrea.getValue('I00202') == 126.0):
                     if(self.atrea.getValue('H00511') == 1):
