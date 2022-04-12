@@ -59,7 +59,11 @@ async def async_setup_entry(
     if preset_list is None:
         preset_list = ALL_PRESET_LIST
 
-    async_add_entities([AtreaDevice(hass, entry, sensor_name, fan_list, preset_list)])
+    hass.data[DOMAIN][entry.entry_id]["climate"] = AtreaDevice(
+        hass, entry, sensor_name, fan_list, preset_list
+    )
+
+    async_add_entities([hass.data[DOMAIN][entry.entry_id]["climate"]])
 
 
 class AtreaDevice(ClimateEntity):
@@ -72,11 +76,11 @@ class AtreaDevice(ClimateEntity):
         self.ip = entry.data.get(CONF_IP_ADDRESS)
         self._coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         self.updatePending = False
+        self._preset_list = []
         self._warnings = []
         self._prefixName = sensor_name
         self._current_fan_mode = None
         self._alerts = []
-        self._preset_list = []
         self._outside_temp = 0.0
         self._inside_temp = 0.0
         self._supply_air_temp = 0.0
@@ -88,16 +92,26 @@ class AtreaDevice(ClimateEntity):
         self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
-
-        for required_preset in preset_list:
-            for i, preset_supported in hass.data[DOMAIN][entry.entry_id][
-                "supportedModes"
-            ]:
-                if preset_supported and ALL_PRESET_LIST[i] == required_preset:
-                    self._preset_list.append(ALL_PRESET_LIST[i])
-
         self._userLabels = hass.data[DOMAIN][entry.entry_id]["userLabels"]
+
+        self.setPresetList(preset_list)
         self.manualUpdate()
+
+    async def updatePresetList(self, preset_list):
+        LOGGER.debug("updatePresetList")
+        self.setPresetList(preset_list)
+        self.async_schedule_update_ha_state(True)
+
+    def setPresetList(self, preset_list):
+        LOGGER.warn("setPresetList")
+        self._preset_list = []
+        LOGGER.warn(self.data["supportedModes"])
+        for required_preset in preset_list:
+            if preset_list[required_preset]:
+                LOGGER.warn(required_preset)
+                for i, preset_supported in self.data["supportedModes"]:
+                    if preset_supported and ALL_PRESET_LIST[i] == required_preset:
+                        self._preset_list.append(ALL_PRESET_LIST[i])
 
     async def async_added_to_hass(self) -> None:
         self._enabled = True

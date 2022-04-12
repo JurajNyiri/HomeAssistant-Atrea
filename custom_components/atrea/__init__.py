@@ -35,8 +35,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             atrea.getParams, False
         )
         hass.data[DOMAIN][entry.entry_id]["supportedModes"] = (
-            (await hass.async_add_executor_job(atrea.getSupportedModes)).items(),
-        )
+            await hass.async_add_executor_job(atrea.getSupportedModes)
+        ).items()
         hass.data[DOMAIN][entry.entry_id][
             "userLabels"
         ] = await hass.async_add_executor_job(atrea.loadUserLabels)
@@ -67,6 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "translations": (await hass.async_add_executor_job(atrea.getTranslations)),
             "configDir": (await hass.async_add_executor_job(atrea.getConfigDir)),
         }
+        entry.async_on_unload(hass.data[DOMAIN][entry.entry_id]["update_listener"])
 
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, "climate")
