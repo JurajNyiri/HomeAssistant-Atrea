@@ -1,25 +1,10 @@
-"""
-Support for Atrea Air Ventilation.
-
-configuration.yaml
-
-climate:
-  - platform: atrea
-    name: name
-    host: ip
-    password: password
-"""
-
-__version__ = "4.3.1"
-
-import logging
-import json
-import voluptuous as vol
+import time
 import re
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.util import slugify
 
-from pyatrea import Atrea, AtreaProgram, AtreaMode
-
-from datetime import timedelta
+from custom_components.atrea.utils import processFanModes
 
 try:
     from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
@@ -28,158 +13,143 @@ except ImportError:
         ClimateDevice as ClimateEntity,
         PLATFORM_SCHEMA,
     )
-
 from homeassistant.components.climate.const import (
-    ATTR_HVAC_MODE,
-    ATTR_FAN_MODE,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_TARGET_TEMPERATURE,
     HVAC_MODE_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_FAN_ONLY,
-    SUPPORT_FAN_MODE,
 )
-
 from homeassistant.const import (
-    STATE_ON,
-    STATE_OFF,
     CONF_NAME,
-    CONF_HOST,
-    CONF_MONITORED_CONDITIONS,
-    CONF_PASSWORD,
+    CONF_IP_ADDRESS,
     TEMP_CELSIUS,
     ATTR_TEMPERATURE,
-    CONF_CUSTOMIZE,
 )
-import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
+from homeassistant.helpers import device_registry as dr
+from typing import Callable
+from pyatrea import AtreaProgram, AtreaMode
 
-MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
-SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE | SUPPORT_PRESET_MODE
-_LOGGER = logging.getLogger(__name__)
-DEFAULT_NAME = "Atrea"
-STATE_MANUAL = "manual"
-STATE_UNKNOWN = "unknown"
-CONF_FAN_MODES = "fan_modes"
-CONF_PRESETS = "presets"
-CUSTOMIZE_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_FAN_MODES): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_PRESETS): vol.All(cv.ensure_list, [cv.string]),
-    }
-)
-DEFAULT_FAN_MODE_LIST = [
-    "12%",
-    "20%",
-    "30%",
-    "40%",
-    "50%",
-    "60%",
-    "70%",
-    "80%",
-    "90%",
-    "100%",
-]
-ALL_PRESET_LIST = [
-    "Off",
-    "Automatic",
-    "Ventilation",
-    "Circulation and Ventilation",
-    "Circulation",
-    "Night precooling",
-    "Disbalance",
-    "Overpressure",
-    "Periodic ventilation",
-    "Startup",
-    "Rundown",
-    "Defrosting",
-    "External",
-    "HP defrosting",
-    "IN1",
-    "IN2",
-    "D1",
-    "D2",
-    "D3",
-    "D4",
-]
-
-ICONS = {
-    AtreaMode.OFF: "mdi:fan-off",
-    AtreaMode.AUTOMATIC: "mdi:fan",
-    AtreaMode.VENTILATION: "mdi:fan-chevron-up",
-    AtreaMode.CIRCULATION_AND_VENTILATION: "mdi:fan",
-    AtreaMode.CIRCULATION: "mdi:fan-chevron-down",
-    AtreaMode.NIGHT_PRECOOLING: "mdi:fan-speed-1",
-    AtreaMode.DISBALANCE: "mdi:fan-speed-2",
-    AtreaMode.OVERPRESSURE: "mdi:fan-speed-3",
-    AtreaMode.STARTUP: "mdi:chevron-up",
-    AtreaMode.RUNDOWN: "mdi:chevron-down",
-    AtreaMode.DEFROSTING: "mdi:car-defrost-rear",
-    AtreaMode.EXTERNAL: "mdi:fan-alert",
-    AtreaMode.HP_DEFROSTING: "mdi:car-defrost-front",
-    AtreaMode.IN1: "mdi:fan-chevron-up",
-    AtreaMode.IN2: "mdi:fan-chevron-up",
-    AtreaMode.D1: "mdi:fan-chevron-up",
-    AtreaMode.D2: "mdi:fan-chevron-up",
-    AtreaMode.D3: "mdi:fan-chevron-up",
-    AtreaMode.D4: "mdi:fan-chevron-up",
-}
-
-HVAC_MODES = [HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_FAN_ONLY]
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_HOST): cv.string,
-        vol.Optional(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(CONF_CUSTOMIZE, default={}): CUSTOMIZE_SCHEMA,
-    }
+from .const import (
+    DOMAIN,
+    LOGGER,
+    UPDATE_DELAY,
+    MIN_TIME_BETWEEN_SCANS,
+    SUPPORT_FLAGS,
+    STATE_UNKNOWN,
+    CONF_FAN_MODES,
+    CONF_PRESETS,
+    DEFAULT_FAN_MODE_LIST,
+    ALL_PRESET_LIST,
+    ICONS,
+    HVAC_MODES,
 )
 
 
-def setup_platform(hass, config, add_devices, discovery_info=None):
-    host = config.get(CONF_HOST)
-    password = config.get(CONF_PASSWORD)
-    sensor_name = config.get(CONF_NAME)
-    conditions = config.get(CONF_MONITORED_CONDITIONS)
-    fan_list = (
-        config.get(CONF_CUSTOMIZE).get(CONF_FAN_MODES, []) or DEFAULT_FAN_MODE_LIST
-    )
-    preset_list = config.get(CONF_CUSTOMIZE).get(CONF_PRESETS, []) or ALL_PRESET_LIST
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
+):
+    sensor_name = entry.data.get(CONF_NAME)
+    if sensor_name is None:
+        sensor_name = "atrea"
 
-    add_devices(
-        [AtreaDevice(host, password, sensor_name, fan_list, preset_list, conditions)]
+    fan_list = entry.data.get(CONF_FAN_MODES)
+    if fan_list is None:
+        fan_list = DEFAULT_FAN_MODE_LIST
+
+    # todo: verify this works with options
+    preset_list = entry.data.get(CONF_PRESETS)
+    if preset_list is None:
+        preset_list = {}
+        for preset in ALL_PRESET_LIST:
+            preset_list[preset] = True
+
+    hass.data[DOMAIN][entry.entry_id]["climate"] = AtreaDevice(
+        hass, entry, sensor_name, fan_list, preset_list
     )
+
+    async_add_entities([hass.data[DOMAIN][entry.entry_id]["climate"]])
 
 
 class AtreaDevice(ClimateEntity):
-    def __init__(self, host, password, sensor_name, fan_list, preset_list, conditions):
-        self.host = host
-        self.password = password
-        self.atrea = Atrea(self.host, self.password)
+    def __init__(
+        self, hass, entry, sensor_name, fan_list, preset_list,
+    ):
+        super().__init__()
+        self.data = hass.data[DOMAIN][entry.entry_id]
+        self.atrea = self.data["atrea"]
+        self._coordinator = self.data["coordinator"]
+        self._userLabels = self.data["userLabels"]
+        self.ip = entry.data.get(CONF_IP_ADDRESS)
+        self.updatePending = False
+        self._preset_list = []
         self._warnings = []
-        self._prefixName = sensor_name
+        self._name = sensor_name
         self._current_fan_mode = None
         self._alerts = []
-        self._preset_list = []
         self._outside_temp = 0.0
         self._inside_temp = 0.0
         self._supply_air_temp = 0.0
         self._requested_temp = 0.0
         self._requested_power = None
-        self._fan_list = fan_list
+
         self._current_preset = None
         self._current_hvac_mode = None
         self._unit = "Status"
         self.air_handling_control = None
+        self._enabled = False
 
+        self.updatePresetList(preset_list, False)
+        self.updateFanList(fan_list, False)
+        self.manualUpdate(False)
+
+    def updatePresetList(self, preset_list, updateState=True):
+        self._preset_list = []
         for required_preset in preset_list:
-            for i, preset_supported in self.atrea.getSupportedModes().items():
-                if preset_supported and ALL_PRESET_LIST[i] == required_preset:
-                    self._preset_list.append(ALL_PRESET_LIST[i])
+            if preset_list[required_preset]:
+                for i, preset_supported in self.data["supportedModes"]:
+                    if preset_supported and ALL_PRESET_LIST[i] == required_preset:
+                        self._preset_list.append(ALL_PRESET_LIST[i])
+        if updateState:
+            self.async_schedule_update_ha_state(True)
 
-        self._userLabels = self.atrea.loadUserLabels()
-        self.update()
+    def updateFanList(self, fan_list, updateState=True):
+        self._fan_list = processFanModes(fan_list)
+        if updateState:
+            self.async_schedule_update_ha_state(True)
+
+    def updateName(self, name, updateState=True):
+        self._name = name
+        if updateState:
+            self.async_schedule_update_ha_state(True)
+
+    async def async_added_to_hass(self) -> None:
+        self._enabled = True
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._enabled = False
+
+    def getUniqueID(self):
+        return slugify(f"atrea_{self.ip}")
+
+    @property
+    def brand(self):
+        return "ATREA s.r.o."
+
+    @property
+    def model(self):
+        return self._model["category"] + " " + self._model["model"]
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.getUniqueID())},
+            "name": self.name,
+            "manufacturer": self.brand,
+            "model": self.model,
+            "sw_version": self._swVersion,
+            "hw_version": self._id,
+            "connections": {},
+        }
 
     @property
     def should_poll(self):
@@ -209,8 +179,12 @@ class AtreaDevice(ClimateEntity):
         return SUPPORT_FLAGS
 
     @property
+    def unique_id(self) -> str:
+        return self.getUniqueID()
+
+    @property
     def name(self):
-        return "{}".format(self._prefixName)
+        return "{}".format(self._name)
 
     @property
     def extra_state_attributes(self):
@@ -281,11 +255,19 @@ class AtreaDevice(ClimateEntity):
         return self.air_handling_control
 
     @Throttle(MIN_TIME_BETWEEN_SCANS)
-    def update(self):
-        self.manualUpdate()
+    async def async_update(self):
+        if not self.updatePending:
+            self.updatePending = True
+            await self._coordinator.async_request_refresh()
+            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+            self.manualUpdate()
+            self.updatePending = False
 
-    def manualUpdate(self):
-        status = self.atrea.getStatus(False)
+    def manualUpdate(self, updateState=True):
+        status = self.data["status"]
+        self._id = self.atrea.getID()
+        self._model = self.atrea.getModel()
+        self._swVersion = self.atrea.getVersion()
         self._warnings = []
         self._alerts = []
         if status != False:
@@ -312,7 +294,7 @@ class AtreaDevice(ClimateEntity):
                 elif int(status["H10514"]) == 0:
                     self._inside_temp = float(status["I10207"]) / 10
                 else:
-                    _LOGGER.warn(
+                    LOGGER.warn(
                         "Indoor sensor not supported yet. Please contact repository owner with information about your unit."
                     )
             elif "I00210" in status:
@@ -361,35 +343,45 @@ class AtreaDevice(ClimateEntity):
             else:
                 self.air_handling_control = "Unknown (" + str(program) + ")"
 
+            # todo fix warning not translated
             params = self.atrea.getParams()
             for warning in params["warning"]:
                 if status[warning] == "1":
                     self._warnings.append(self.atrea.getTranslation(warning))
 
-            params = self.atrea.getParams()
             for alert in params["alert"]:
                 if status[alert] == "1":
                     self._alerts.append(self.atrea.getTranslation(alert))
 
         else:
             self._current_hvac_mode = None
+        if updateState:
+            self.async_schedule_update_ha_state(True)
 
-    def set_fan_mode(self, fan_percent):
+    async def async_set_fan_mode(self, fan_percent):
         fan_percent = int(re.sub("[^0-9]", "", fan_percent))
         if fan_percent < 12:
             fan_percent = 12
         if fan_percent > 100:
             fan_percent = 100
         if fan_percent >= 12 and fan_percent <= 100:
-            if self.atrea.getProgram() == AtreaProgram.WEEKLY:
+            if (
+                await self.hass.async_add_executor_job(self.atrea.getProgram)
+                == AtreaProgram.WEEKLY
+            ):
                 self.atrea.setProgram(AtreaProgram.TEMPORARY)
             self.atrea.setPower(fan_percent)
-            self.atrea.exec()
+
+            self.updatePending = True
+            await self.hass.async_add_executor_job(self.atrea.exec)
+            await self._coordinator.async_request_refresh()
+            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+            self.updatePending = False
             self.manualUpdate()
         else:
-            _LOGGER.warn("Power out of range (12,100)")
+            LOGGER.warn("Power out of range (12,100)")
 
-    def turn_on(self):
+    async def async_turn_on(self):
         if self.air_handling_control == "Manual":
             self.atrea.setProgram(AtreaProgram.MANUAL)
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
@@ -400,10 +392,15 @@ class AtreaDevice(ClimateEntity):
             self.atrea.setProgram(AtreaProgram.TEMPORARY)
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
         self.atrea.setMode(AtreaMode.VENTILATION)
-        self.atrea.exec()
-        self.manualUpdate()
 
-    def turn_off(self):
+        self.updatePending = True
+        await self.hass.async_add_executor_job(self.atrea.exec)
+        await self._coordinator.async_request_refresh()
+        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+        self.manualUpdate()
+        self.updatePending = False
+
+    async def async_turn_off(self):
         if self.air_handling_control == "Manual":
             self.atrea.setProgram(AtreaProgram.MANUAL)
         elif self.air_handling_control == "Temporary":
@@ -413,10 +410,15 @@ class AtreaDevice(ClimateEntity):
 
         self._current_hvac_mode = HVAC_MODE_OFF
         self.atrea.setMode(AtreaMode.OFF)
-        self.atrea.exec()
-        self.manualUpdate()
 
-    def set_hvac_mode(self, hvac_mode):
+        self.updatePending = True
+        await self.hass.async_add_executor_job(self.atrea.exec)
+        await self._coordinator.async_request_refresh()
+        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+        self.manualUpdate()
+        self.updatePending = False
+
+    async def async_set_hvac_mode(self, hvac_mode):
         mode = None
         program = None
         if hvac_mode == HVAC_MODE_AUTO:
@@ -430,7 +432,9 @@ class AtreaDevice(ClimateEntity):
             self.turn_off()
             self._current_hvac_mode = HVAC_MODE_OFF
 
-        if program != None and program != self.atrea.getProgram():
+        if program != None and program != await self.hass.async_add_executor_job(
+            self.atrea.getProgram
+        ):
             self.atrea.setProgram(program)
 
         if (
@@ -438,38 +442,53 @@ class AtreaDevice(ClimateEntity):
         ) or self.air_handling_control == "Schedule":
             self.atrea.setMode(mode)
 
-        self.atrea.exec()
+        self.updatePending = True
+        await self.hass.async_add_executor_job(self.atrea.exec)
+        await self._coordinator.async_request_refresh()
+        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
         self.manualUpdate()
+        self.updatePending = False
 
-    def set_preset_mode(self, preset):
+    async def async_set_preset_mode(self, preset_mode):
         mode = None
         try:
-            mode = AtreaMode(ALL_PRESET_LIST.index(preset))
+            mode = AtreaMode(ALL_PRESET_LIST.index(preset_mode))
         except ValueError:
-            _LOGGER.warn("Chosen preset=%s is incorrect preset.", str(preset))
+            LOGGER.warn("Chosen preset=%s is incorrect preset.", str(preset_mode))
             return
 
         if mode == AtreaMode.OFF:
             self.turn_off()
-        if self.atrea.getProgram() == AtreaProgram.WEEKLY:
+        if (
+            await self.hass.async_add_executor_job(self.atrea.getProgram)
+            == AtreaProgram.WEEKLY
+        ):
             self.atrea.setProgram(AtreaProgram.TEMPORARY)
-        if mode != self.atrea.getMode():
+        if mode != await self.hass.async_add_executor_job(self.atrea.getMode):
             self.atrea.setMode(mode)
 
-        self.atrea.exec()
+        self.updatePending = True
+        await self.hass.async_add_executor_job(self.atrea.exec)
+        await self._coordinator.async_request_refresh()
+        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
         self.manualUpdate()
+        self.updatePending = False
 
-    def set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
         elif temperature >= 10 and temperature <= 40:
             self.atrea.setTemperature(temperature)
-            self.atrea.exec()
+            self.updatePending = True
+            await self.hass.async_add_executor_job(self.atrea.exec)
+            await self._coordinator.async_request_refresh()
+            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
             self.manualUpdate()
+            self.updatePending = False
         else:
-            _LOGGER.warn(
+            LOGGER.warn(
                 "Chosen temperature=%s is incorrect. It needs to be between 10 and 40.",
                 str(temperature),
             )

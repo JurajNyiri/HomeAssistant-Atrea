@@ -1,0 +1,72 @@
+{
+  "title": "Atrea",
+  "config": {
+    "flow_title": "Atrea: {name}",
+    "step": {
+      "ip": {
+        "data": {
+          "ip_address": "IP Address"
+        },
+        "description": "Enter unit IP address."
+      },
+      "auth": {
+        "data": {
+          "name": "Name",
+          "password": "Password"
+        },
+        "description": "Enter password for the unit."
+      }
+    },
+    "error": {
+      "not_atrea_unit": "IP address is not a supported Atrea unit",
+      "invalid_auth": "Incorrect password or too many signed in users.",
+      "unknown": "Unknown error",
+      "connection_failed": "Connection failed",
+      "already_configured": "IP address already configured"
+    },
+    "abort": {
+      "already_configured": "IP address already configured",
+      "not_atrea_unit": "Discovered device is not a supported Atrea unit"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "name": "Name (Optional)",
+          "presets": "Enabled presets",
+          "ip_address": "IP Address",
+          "password": "Password",
+          "Off": "Off",
+          "Automatic": "Automatic",
+          "Ventilation": "Ventilation",
+          "Circulation and Ventilation": "Circulation and Ventilation",
+          "Circulation": "Circulation",
+          "Night precooling": "Night precooling",
+          "Disbalance": "Disbalance",
+          "Overpressure": "Overpressure",
+          "Periodic ventilation": "Periodic ventilation",
+          "Startup": "Startup",
+          "Rundown": "Rundown",
+          "Defrosting": "Defrosting",
+          "External": "External",
+          "HP defrosting": "HP defrosting",
+          "IN1": "IN1",
+          "IN2": "IN2",
+          "D1": "D1",
+          "D2": "D2",
+          "D3": "D3",
+          "D4": "D4",
+          "fan_modes": "Fan modes"
+        },
+        "description": "Modify settings of your Atrea unit."
+      }
+    },
+    "error": {
+      "already_configured": "IP address already configured",
+      "invalid_auth": "Incorrect password or too many signed in users.",
+      "not_atrea_unit": "Discovered device is not a supported Atrea unit",
+      "invalid_fan_mode": "Invalid fan mode format, use only comma and numbers between 12 and 100."
+    }
+  }
+}
