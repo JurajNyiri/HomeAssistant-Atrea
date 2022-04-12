@@ -77,8 +77,9 @@ class AtreaDevice(ClimateEntity):
         super().__init__()
         self.data = hass.data[DOMAIN][entry.entry_id]
         self.atrea = self.data["atrea"]
+        self._coordinator = self.data["coordinator"]
+        self._userLabels = self.data["userLabels"]
         self.ip = entry.data.get(CONF_IP_ADDRESS)
-        self._coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         self.updatePending = False
         self._preset_list = []
         self._warnings = []
@@ -96,11 +97,10 @@ class AtreaDevice(ClimateEntity):
         self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
-        self._userLabels = hass.data[DOMAIN][entry.entry_id]["userLabels"]
 
         self.updatePresetList(preset_list, False)
         self.updateFanList(fan_list, False)
-        self.manualUpdate()
+        self.manualUpdate(False)
 
     def updatePresetList(self, preset_list, updateState=True):
         self._preset_list = []
@@ -263,7 +263,7 @@ class AtreaDevice(ClimateEntity):
             self.manualUpdate()
             self.updatePending = False
 
-    def manualUpdate(self):
+    def manualUpdate(self, updateState=True):
         status = self.data["status"]
         self._id = self.atrea.getID()
         self._model = self.atrea.getModel()
@@ -355,6 +355,8 @@ class AtreaDevice(ClimateEntity):
 
         else:
             self._current_hvac_mode = None
+        if updateState:
+            self.async_schedule_update_ha_state(True)
 
     async def async_set_fan_mode(self, fan_percent):
         fan_percent = int(re.sub("[^0-9]", "", fan_percent))

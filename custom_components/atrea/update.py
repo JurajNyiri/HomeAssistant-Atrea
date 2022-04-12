@@ -6,9 +6,7 @@ from typing import Callable
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.util import slugify, Throttle
 from homeassistant.const import CONF_IP_ADDRESS, CONF_NAME
-from .const import DOMAIN, MIN_TIME_BETWEEN_SCANS, UPDATE_DELAY
-
-_LOGGER = logging.getLogger(__name__)
+from .const import DOMAIN, MIN_TIME_BETWEEN_SCANS, UPDATE_DELAY, LOGGER
 
 
 async def async_setup_entry(
@@ -32,7 +30,7 @@ class AtreaUpdate(UpdateEntity):
         self._enabled = False
         self.ip = entry.data.get(CONF_IP_ADDRESS)
         self.updateName(sensor_name, False)
-        self.manualUpdate()
+        self.manualUpdate(False)
 
     async def async_added_to_hass(self) -> None:
         self._enabled = True
@@ -80,12 +78,17 @@ class AtreaUpdate(UpdateEntity):
             self.manualUpdate()
             self.updatePending = False
 
-    def manualUpdate(self):
+    def manualUpdate(self, updateState=True):
         status = self.data["status"]
+        self._in_progress = int(status["I10005"]) > 3
         self._id = self.atrea.getID()
         self._model = self.atrea.getModel()
         self._swVersion = self.atrea.getVersion()
         self._latestVersion = self.atrea.getLatestVersion()
+        if self._latestVersion == "0.0":
+            self._latestVersion = self._swVersion
+        if updateState:
+            self.async_schedule_update_ha_state(True)
 
     @property
     def supported_features(self):
@@ -119,5 +122,9 @@ class AtreaUpdate(UpdateEntity):
     async def async_install(
         self, version, backup,
     ):
-        print("todo install")
+        self._in_progress = True
+        self.atrea.prepareUpdate()
+        await self.hass.async_add_executor_job(self.atrea.exec)
+        await self._coordinator.async_request_refresh()
+        self.manualUpdate()
 
