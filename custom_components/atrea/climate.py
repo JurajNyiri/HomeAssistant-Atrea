@@ -4,6 +4,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
 
+from custom_components.atrea.utils import processFanModes
+
 try:
     from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
 except ImportError:
@@ -86,7 +88,7 @@ class AtreaDevice(ClimateEntity):
         self._supply_air_temp = 0.0
         self._requested_temp = 0.0
         self._requested_power = None
-        self._fan_list = fan_list
+
         self._current_preset = None
         self._current_hvac_mode = None
         self._unit = "Status"
@@ -94,24 +96,24 @@ class AtreaDevice(ClimateEntity):
         self._enabled = False
         self._userLabels = hass.data[DOMAIN][entry.entry_id]["userLabels"]
 
-        self.setPresetList(preset_list)
+        self.updatePresetList(preset_list, False)
+        self.updateFanList(fan_list, False)
         self.manualUpdate()
 
-    async def updatePresetList(self, preset_list):
-        LOGGER.debug("updatePresetList")
-        self.setPresetList(preset_list)
-        self.async_schedule_update_ha_state(True)
-
-    def setPresetList(self, preset_list):
-        LOGGER.warn("setPresetList")
+    def updatePresetList(self, preset_list, updateState=True):
         self._preset_list = []
-        LOGGER.warn(self.data["supportedModes"])
         for required_preset in preset_list:
             if preset_list[required_preset]:
-                LOGGER.warn(required_preset)
                 for i, preset_supported in self.data["supportedModes"]:
                     if preset_supported and ALL_PRESET_LIST[i] == required_preset:
                         self._preset_list.append(ALL_PRESET_LIST[i])
+        if updateState:
+            self.async_schedule_update_ha_state(True)
+
+    def updateFanList(self, fan_list, updateState=True):
+        self._fan_list = processFanModes(fan_list)
+        if updateState:
+            self.async_schedule_update_ha_state(True)
 
     async def async_added_to_hass(self) -> None:
         self._enabled = True

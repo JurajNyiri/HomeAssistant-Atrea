@@ -21,18 +21,7 @@ STATE_MANUAL = "manual"
 STATE_UNKNOWN = "unknown"
 CONF_FAN_MODES = "fan_modes"
 CONF_PRESETS = "presets"
-DEFAULT_FAN_MODE_LIST = [
-    "12%",
-    "20%",
-    "30%",
-    "40%",
-    "50%",
-    "60%",
-    "70%",
-    "80%",
-    "90%",
-    "100%",
-]
+DEFAULT_FAN_MODE_LIST = "12,20,30,40,50,60,70,80,90,100"
 ALL_PRESET_LIST = [
     "Off",
     "Automatic",

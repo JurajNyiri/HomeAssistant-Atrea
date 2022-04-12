@@ -27,7 +27,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def async_update_data():
-        LOGGER.debug("async_update_data")
         hass.data[DOMAIN][entry.entry_id]["status"] = await hass.async_add_executor_job(
             atrea.getStatus, False
         )
@@ -40,7 +39,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN][entry.entry_id][
             "userLabels"
         ] = await hass.async_add_executor_job(atrea.loadUserLabels)
-        LOGGER.debug("async_update_data done")
 
     atreaCoordinator = DataUpdateCoordinator(
         hass, LOGGER, name="Atrea resource status", update_method=async_update_data,

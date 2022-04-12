@@ -36,7 +36,6 @@
           "presets": "Enabled presets",
           "ip_address": "IP Address",
           "password": "Password",
-
           "Off": "Off",
           "Automatic": "Automatic",
           "Ventilation": "Ventilation",
@@ -56,7 +55,8 @@
           "D1": "D1",
           "D2": "D2",
           "D3": "D3",
-          "D4": "D4"
+          "D4": "D4",
+          "fan_modes": "Fan modes"
         },
         "description": "Modify settings of your Atrea unit."
       }
@@ -64,7 +64,8 @@
     "error": {
       "already_configured": "IP address already configured",
       "invalid_auth": "Incorrect password or too many signed in users.",
-      "not_atrea_unit": "Discovered device is not a supported Atrea unit"
+      "not_atrea_unit": "Discovered device is not a supported Atrea unit",
+      "invalid_fan_mode": "Invalid fan mode format, use only comma and numbers between 12 and 100."
     }
   }
 }
