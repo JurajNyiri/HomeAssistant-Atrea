@@ -51,10 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     status = await hass.async_add_executor_job(atrea.getStatus, False)
 
     if not status:
-        LOGGER.error(
-            "Incorrect password or too many signed in users. Try restarting the Atrea unit and try again."
-        )
-        raise ConfigEntryNotReady
+        raise ConfigEntryNotReady("Incorrect password or too many signed in users.")
     else:
         hass.data[DOMAIN] = {}
         hass.data[DOMAIN][entry.entry_id] = {
@@ -68,6 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "status": status,
             "params": (await hass.async_add_executor_job(atrea.getParams, False)),
             "translations": (await hass.async_add_executor_job(atrea.getTranslations)),
+            "configDir": (await hass.async_add_executor_job(atrea.getConfigDir)),
         }
 
         hass.async_create_task(

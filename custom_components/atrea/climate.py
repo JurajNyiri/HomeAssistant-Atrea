@@ -23,6 +23,7 @@ from homeassistant.const import (
     ATTR_TEMPERATURE,
 )
 from homeassistant.util import Throttle
+from homeassistant.helpers import device_registry as dr
 from typing import Callable
 from pyatrea import AtreaProgram, AtreaMode
 
@@ -112,7 +113,7 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def model(self):
-        return "todo model"
+        return self._model["category"] + " " + self._model["model"]
 
     @property
     def device_info(self):
@@ -121,7 +122,9 @@ class AtreaDevice(ClimateEntity):
             "name": self.name,
             "manufacturer": self.brand,
             "model": self.model,
-            "sw_version": "todo sw",
+            "sw_version": self._swVersion,
+            "hw_version": self._id,
+            "connections": {},
         }
 
     @property
@@ -238,6 +241,9 @@ class AtreaDevice(ClimateEntity):
 
     def manualUpdate(self):
         status = self.data["status"]
+        self._id = self.atrea.getID()
+        self._model = self.atrea.getModel()
+        self._swVersion = self.atrea.getVersion()
         self._warnings = []
         self._alerts = []
         if status != False:
