@@ -1,0 +1,31 @@
+{
+  "title": "Atrea",
+  "config": {
+    "flow_title": "Atrea: {name}",
+    "step": {
+      "ip": {
+        "data": {
+          "ip_address": "IP Address"
+        },
+        "description": "Enter unit IP address."
+      },
+      "auth": {
+        "data": {
+          "password": "Password"
+        },
+        "description": "Enter password for the unit."
+      }
+    },
+    "error": {
+      "not_atrea_unit": "IP address is not a supported Atrea unit",
+      "invalid_auth": "Incorrect password.",
+      "unknown": "Unknown error",
+      "connection_failed": "Connection failed",
+      "already_configured": "IP address already configured"
+    },
+    "abort": {
+      "already_configured": "IP address already configured",
+      "not_atrea_unit": "Discovered device is not a supported Atrea unit"
+    }
+  }
+}
