@@ -6,5 +6,6 @@
   "codeowners": ["@JurajNyiri"],
   "requirements": ["pyatrea==0.9.4"],
   "version": "6.0.0",
-  "config_flow": true
+  "config_flow": true,
+  "homeassistant": "2022.4.0"
 }
