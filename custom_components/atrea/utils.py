@@ -28,7 +28,6 @@ def processFanModes(fan_modes):
     for fan_mode in numericArr:
         fan_mode = str(fan_mode) + "%"
         convertedFanMode.append(fan_mode)
-    LOGGER.warn(convertedFanMode)
     return convertedFanMode
 
 

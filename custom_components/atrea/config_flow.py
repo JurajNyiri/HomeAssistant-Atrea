@@ -170,32 +170,44 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
             "[%s] Opened Atrea options.", self.config_entry.data[CONF_IP_ADDRESS]
         )
         if user_input is not None:
+            LOGGER.debug("Verifying user input...")
             try:
+                LOGGER.debug("Loading name...")
                 if CONF_NAME in user_input:
                     name = user_input[CONF_NAME]
 
+                LOGGER.debug("Loading password...")
                 if CONF_PASSWORD in user_input:
                     password = user_input[CONF_PASSWORD]
 
+                LOGGER.debug("Loading fan_modes...")
                 if CONF_FAN_MODES in user_input:
                     fan_modes = user_input[CONF_FAN_MODES]
 
+                LOGGER.debug("Verifying format of fan modes...")
                 if not processFanModes(fan_modes):
                     raise Exception("Invalid fan mode format")
 
-                data = {CONF_IP_ADDRESS: host, CONF_PASSWORD: password}
+                LOGGER.debug("Preparing save object: ip, password, name")
+                data = {CONF_IP_ADDRESS: host, CONF_PASSWORD: password, CONF_NAME: name}
+                LOGGER.debug("Preparing save object: fan_modes")
                 data[CONF_FAN_MODES] = fan_modes
+                LOGGER.debug("Preparing save object: presets")
                 data[CONF_PRESETS] = {}
                 for preset in ALL_PRESET_LIST:
                     if preset in user_input:
+                        LOGGER.debug("test")
                         data[CONF_PRESETS][preset] = user_input[preset]
+                        LOGGER.debug("test2")
 
+                LOGGER.debug("Verifying password...")
                 if password != self.config_entry.data[CONF_PASSWORD]:
                     atrea = Atrea(host, password)
                     status = await self.hass.async_add_executor_job(atrea.getStatus)
                     if not status:
                         raise Exception("Invalid authentication data")
 
+                LOGGER.debug("Saving entity...")
                 self.hass.config_entries.async_update_entry(
                     self.config_entry, data=data,
                 )
@@ -212,18 +224,21 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
                     errors["base"] = "unknown"
                     LOGGER.error(e)
 
+        LOGGER.debug("Preparing form... password, name, fan_modes, presets header")
         spec = {
             vol.Required(CONF_PASSWORD, description={"suggested_value": password}): str,
             vol.Optional(CONF_NAME, description={"suggested_value": name}): str,
             vol.Optional(
                 CONF_FAN_MODES, description={"suggested_value": fan_modes}
             ): str,
-            vol.Optional(CONF_PRESETS, description={"suggested_value": name}): vol.In(
+            vol.Optional(CONF_PRESETS, description={"suggested_value": None}): vol.In(
                 []
             ),
         }
 
+        LOGGER.debug("Preparing form... presets")
         for preset in ALL_PRESET_LIST:
+            LOGGER.warn(preset)
             if preset in presets:
                 spec[
                     vol.Required(
@@ -232,6 +247,8 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
                 ] = bool
             else:
                 spec[vol.Required(preset, description={"suggested_value": True})] = bool
+
+        LOGGER.debug("Returning form.")
 
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(spec), errors=errors,
