@@ -54,6 +54,7 @@ async def async_setup_entry(
     if fan_list is None:
         fan_list = DEFAULT_FAN_MODE_LIST
 
+    # todo: verify this works with options
     preset_list = entry.data.get(CONF_PRESETS)
     if preset_list is None:
         preset_list = ALL_PRESET_LIST

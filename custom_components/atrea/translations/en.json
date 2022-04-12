@@ -27,5 +27,44 @@
       "already_configured": "IP address already configured",
       "not_atrea_unit": "Discovered device is not a supported Atrea unit"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "name": "Name (Optional)",
+          "presets": "Enabled presets",
+          "ip_address": "IP Address",
+          "password": "Password",
+
+          "Off": "Off",
+          "Automatic": "Automatic",
+          "Ventilation": "Ventilation",
+          "Circulation and Ventilation": "Circulation and Ventilation",
+          "Circulation": "Circulation",
+          "Night precooling": "Night precooling",
+          "Disbalance": "Disbalance",
+          "Overpressure": "Overpressure",
+          "Periodic ventilation": "Periodic ventilation",
+          "Startup": "Startup",
+          "Rundown": "Rundown",
+          "Defrosting": "Defrosting",
+          "External": "External",
+          "HP defrosting": "HP defrosting",
+          "IN1": "IN1",
+          "IN2": "IN2",
+          "D1": "D1",
+          "D2": "D2",
+          "D3": "D3",
+          "D4": "D4"
+        },
+        "description": "Modify settings of your Atrea unit."
+      }
+    },
+    "error": {
+      "already_configured": "IP address already configured",
+      "invalid_auth": "Incorrect password or too many signed in users.",
+      "not_atrea_unit": "Discovered device is not a supported Atrea unit"
+    }
   }
 }

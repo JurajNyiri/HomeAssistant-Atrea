@@ -1,18 +1,20 @@
 from homeassistant import config_entries
-from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD
+from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD, CONF_NAME
 from homeassistant.core import callback
 from .utils import isAtreaUnit
 import voluptuous as vol
-from .const import (
-    DOMAIN,
-    LOGGER,
-)
+from .const import DOMAIN, LOGGER, CONF_PRESETS, ALL_PRESET_LIST
 from pyatrea import Atrea
 
 
 @config_entries.HANDLERS.register(DOMAIN)
 class FlowHandler(config_entries.ConfigFlow):
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return AtreaOptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -123,4 +125,85 @@ class FlowHandler(config_entries.ConfigFlow):
                 }
             ),
             errors=errors,
+        )
+
+
+class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        self.config_entry = config_entry
+        self.options = dict(config_entry.options)
+
+    async def async_step_init(self, user_input=None):
+        errors = {}
+        host = self.config_entry.data[CONF_IP_ADDRESS]
+
+        name = ""
+        if CONF_NAME in self.config_entry.data:
+            name = self.config_entry.data[CONF_NAME]
+
+        password = ""
+        if CONF_PASSWORD in self.config_entry.data:
+            password = self.config_entry.data[CONF_PASSWORD]
+
+        presets = []
+        if CONF_PRESETS in self.config_entry.data:
+            presets = self.config_entry.data[CONF_PRESETS]
+
+        LOGGER.debug(
+            "[%s] Opened Atrea options.", self.config_entry.data[CONF_IP_ADDRESS]
+        )
+        if user_input is not None:
+            try:
+                if CONF_NAME in user_input:
+                    name = user_input[CONF_NAME]
+
+                if CONF_PASSWORD in user_input:
+                    password = user_input[CONF_PASSWORD]
+
+                data = {CONF_IP_ADDRESS: host, CONF_PASSWORD: password}
+                data[CONF_PRESETS] = {}
+                for preset in ALL_PRESET_LIST:
+                    if preset in user_input:
+                        data[CONF_PRESETS][preset] = user_input[preset]
+
+                if password != self.config_entry.data[CONF_PASSWORD]:
+                    atrea = Atrea(host, password)
+                    status = await self.hass.async_add_executor_job(atrea.getStatus)
+                    if not status:
+                        raise Exception("Invalid authentication data")
+
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=data,
+                )
+                return self.async_create_entry(title="", data=None)
+            except Exception as e:
+                LOGGER.debug(e)
+                if "Failed to establish a new connection" in str(e):
+                    errors["base"] = "connection_failed"
+                elif str(e) == "Invalid authentication data":
+                    errors["base"] = "invalid_auth"
+                else:
+                    errors["base"] = "unknown"
+                    LOGGER.error(e)
+
+        spec = {
+            vol.Required(CONF_PASSWORD, description={"suggested_value": password}): str,
+            vol.Optional(CONF_NAME, description={"suggested_value": name}): str,
+            vol.Optional(CONF_PRESETS, description={"suggested_value": name}): vol.In(
+                []
+            ),
+        }
+
+        for preset in ALL_PRESET_LIST:
+            if preset in presets:
+                spec[
+                    vol.Required(
+                        preset, description={"suggested_value": presets[preset]}
+                    )
+                ] = bool
+            else:
+                spec[vol.Required(preset, description={"suggested_value": True})] = bool
+
+        return self.async_show_form(
+            step_id="init", data_schema=vol.Schema(spec), errors=errors,
         )
