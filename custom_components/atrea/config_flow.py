@@ -90,11 +90,13 @@ class FlowHandler(config_entries.ConfigFlow):
     async def async_step_auth(self, user_input=None):
         """Provide authentication data."""
         errors = {}
+        name = "Atrea"
         password = ""
         host = self.atreaHost
         if user_input is not None:
             try:
                 LOGGER.debug("[ADD DEVICE][%s] Verifying password.", host)
+                name = user_input[CONF_NAME]
                 password = user_input[CONF_PASSWORD]
 
                 self.atreaPassword = password
@@ -106,7 +108,12 @@ class FlowHandler(config_entries.ConfigFlow):
 
                 LOGGER.debug("[ADD DEVICE][%s] Creating new entry.", host)
                 return self.async_create_entry(
-                    title=host, data={CONF_IP_ADDRESS: host, CONF_PASSWORD: password,},
+                    title=host,
+                    data={
+                        CONF_IP_ADDRESS: host,
+                        CONF_PASSWORD: password,
+                        CONF_NAME: name,
+                    },
                 )
 
             except Exception as e:
@@ -126,6 +133,7 @@ class FlowHandler(config_entries.ConfigFlow):
             step_id="auth",
             data_schema=vol.Schema(
                 {
+                    vol.Required(CONF_NAME, description={"suggested_value": name}): str,
                     vol.Required(
                         CONF_PASSWORD, description={"suggested_value": password}
                     ): str,

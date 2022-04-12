@@ -7,6 +7,7 @@ from .const import (
     CONF_FAN_MODES,
     DEFAULT_FAN_MODE_LIST,
 )
+from homeassistant.const import CONF_NAME
 
 
 def isAtreaUnit(host):
@@ -38,6 +39,10 @@ async def update_listener(hass, entry):
     fan_list = entry.data.get(CONF_FAN_MODES)
     if fan_list is None:
         fan_list = DEFAULT_FAN_MODE_LIST
+    sensor_name = entry.data.get(CONF_NAME)
+    if sensor_name is None:
+        sensor_name = "atrea"
     hass.data[DOMAIN][entry.entry_id]["climate"].updatePresetList(preset_list)
     hass.data[DOMAIN][entry.entry_id]["climate"].updateFanList(fan_list)
+    hass.data[DOMAIN][entry.entry_id]["climate"].updateName(sensor_name)
 

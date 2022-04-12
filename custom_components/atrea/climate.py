@@ -59,7 +59,9 @@ async def async_setup_entry(
     # todo: verify this works with options
     preset_list = entry.data.get(CONF_PRESETS)
     if preset_list is None:
-        preset_list = ALL_PRESET_LIST
+        preset_list = {}
+        for preset in ALL_PRESET_LIST:
+            preset_list[preset] = True
 
     hass.data[DOMAIN][entry.entry_id]["climate"] = AtreaDevice(
         hass, entry, sensor_name, fan_list, preset_list
@@ -80,7 +82,7 @@ class AtreaDevice(ClimateEntity):
         self.updatePending = False
         self._preset_list = []
         self._warnings = []
-        self._prefixName = sensor_name
+        self._name = sensor_name
         self._current_fan_mode = None
         self._alerts = []
         self._outside_temp = 0.0
@@ -101,6 +103,7 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def updatePresetList(self, preset_list, updateState=True):
+        LOGGER.warn(preset_list)
         self._preset_list = []
         for required_preset in preset_list:
             if preset_list[required_preset]:
@@ -112,6 +115,11 @@ class AtreaDevice(ClimateEntity):
 
     def updateFanList(self, fan_list, updateState=True):
         self._fan_list = processFanModes(fan_list)
+        if updateState:
+            self.async_schedule_update_ha_state(True)
+
+    def updateName(self, name, updateState=True):
+        self._name = name
         if updateState:
             self.async_schedule_update_ha_state(True)
 
@@ -177,7 +185,7 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def name(self):
-        return "{}".format(self._prefixName)
+        return "{}".format(self._name)
 
     @property
     def extra_state_attributes(self):

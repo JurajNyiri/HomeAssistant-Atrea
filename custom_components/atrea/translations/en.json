@@ -11,6 +11,7 @@
       },
       "auth": {
         "data": {
+          "name": "Name",
           "password": "Password"
         },
         "description": "Enter password for the unit."
