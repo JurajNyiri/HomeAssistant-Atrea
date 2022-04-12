@@ -5,8 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from typing import Callable
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.util import slugify, Throttle
-from homeassistant.const import CONF_IP_ADDRESS
-
+from homeassistant.const import CONF_IP_ADDRESS, CONF_NAME
 from .const import DOMAIN, MIN_TIME_BETWEEN_SCANS, UPDATE_DELAY
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,11 +14,15 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ):
-    async_add_entities([AtreaUpdate(hass, entry)])
+    sensor_name = entry.data.get(CONF_NAME)
+    if sensor_name is None:
+        sensor_name = "atrea"
+    hass.data[DOMAIN][entry.entry_id]["update"] = AtreaUpdate(hass, entry, sensor_name)
+    async_add_entities([hass.data[DOMAIN][entry.entry_id]["update"]])
 
 
 class AtreaUpdate(UpdateEntity):
-    def __init__(self, hass, entry):
+    def __init__(self, hass, entry, sensor_name):
         super().__init__()
         self._coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         self.updatePending = False
@@ -28,6 +31,7 @@ class AtreaUpdate(UpdateEntity):
         self._in_progress = False
         self._enabled = False
         self.ip = entry.data.get(CONF_IP_ADDRESS)
+        self.updateName(sensor_name, False)
         self.manualUpdate()
 
     async def async_added_to_hass(self) -> None:
@@ -87,9 +91,14 @@ class AtreaUpdate(UpdateEntity):
     def supported_features(self):
         return UpdateEntityFeature.INSTALL
 
+    def updateName(self, name, updateState=True):
+        self._name = name
+        if updateState:
+            self.async_schedule_update_ha_state(True)
+
     @property
     def name(self) -> str:
-        return "Atrea Update"
+        return "{}".format(self._name)
 
     @property
     def in_progress(self) -> bool:
@@ -105,7 +114,7 @@ class AtreaUpdate(UpdateEntity):
 
     @property
     def title(self) -> str:
-        return "Atrea: {0}".format(self._latestVersion)
+        return "{0}: {1}".format(self.name, self._latestVersion)
 
     async def async_install(
         self, version, backup,

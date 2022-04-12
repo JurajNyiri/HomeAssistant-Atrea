@@ -45,4 +45,5 @@ async def update_listener(hass, entry):
     hass.data[DOMAIN][entry.entry_id]["climate"].updatePresetList(preset_list)
     hass.data[DOMAIN][entry.entry_id]["climate"].updateFanList(fan_list)
     hass.data[DOMAIN][entry.entry_id]["climate"].updateName(sensor_name)
+    hass.data[DOMAIN][entry.entry_id]["update"].updateName(sensor_name)
 

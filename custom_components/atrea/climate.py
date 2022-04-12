@@ -344,6 +344,7 @@ class AtreaDevice(ClimateEntity):
             else:
                 self.air_handling_control = "Unknown (" + str(program) + ")"
 
+            # todo fix warning not translated
             params = self.atrea.getParams()
             for warning in params["warning"]:
                 if status[warning] == "1":
