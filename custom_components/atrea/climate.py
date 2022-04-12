@@ -429,7 +429,7 @@ class AtreaDevice(ClimateEntity):
             program = AtreaProgram.MANUAL
             self._current_hvac_mode = HVAC_MODE_FAN_ONLY
         elif hvac_mode == HVAC_MODE_OFF:
-            self.turn_off()
+            await self.async_turn_off()
             self._current_hvac_mode = HVAC_MODE_OFF
 
         if program != None and program != await self.hass.async_add_executor_job(
@@ -458,7 +458,7 @@ class AtreaDevice(ClimateEntity):
             return
 
         if mode == AtreaMode.OFF:
-            self.turn_off()
+            await self.async_turn_off()
         if (
             await self.hass.async_add_executor_job(self.atrea.getProgram)
             == AtreaProgram.WEEKLY
