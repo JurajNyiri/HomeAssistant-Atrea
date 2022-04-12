@@ -72,7 +72,6 @@ class FlowHandler(config_entries.ConfigFlow):
                 else:
                     errors["base"] = "unknown"
                     LOGGER.error(e)
-                LOGGER.warn(errors)
 
         LOGGER.debug("[ADD DEVICE] Showing config flow for IP.")
         return self.async_show_form(
@@ -246,7 +245,6 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
 
         LOGGER.debug("Preparing form... presets")
         for preset in ALL_PRESET_LIST:
-            LOGGER.warn(preset)
             if preset in presets:
                 spec[
                     vol.Required(

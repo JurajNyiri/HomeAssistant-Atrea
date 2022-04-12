@@ -52,6 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         raise ConfigEntryNotReady("Incorrect password or too many signed in users.")
     else:
         hass.data[DOMAIN] = {}
+
         hass.data[DOMAIN][entry.entry_id] = {
             "atrea": atrea,
             "update_listener": entry.add_update_listener(update_listener),

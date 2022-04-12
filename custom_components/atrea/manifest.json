@@ -4,7 +4,7 @@
   "documentation": "https://github.com/JurajNyiri/HomeAssistant-Atrea",
   "dependencies": [],
   "codeowners": ["@JurajNyiri"],
-  "requirements": ["pyatrea==0.9"],
+  "requirements": ["pyatrea==0.9.3"],
   "version": "6.0.0",
   "config_flow": true
 }

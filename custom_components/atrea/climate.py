@@ -103,7 +103,6 @@ class AtreaDevice(ClimateEntity):
         self.manualUpdate()
 
     def updatePresetList(self, preset_list, updateState=True):
-        LOGGER.warn(preset_list)
         self._preset_list = []
         for required_preset in preset_list:
             if preset_list[required_preset]:
