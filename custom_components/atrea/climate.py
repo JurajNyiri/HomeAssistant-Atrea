@@ -358,8 +358,8 @@ class AtreaDevice(ClimateEntity):
         if updateState:
             self.async_schedule_update_ha_state(True)
 
-    async def async_set_fan_mode(self, fan_percent):
-        fan_percent = int(re.sub("[^0-9]", "", fan_percent))
+    async def async_set_fan_mode(self, fan_mode):
+        fan_percent = int(re.sub("[^0-9]", "", fan_mode))
         if fan_percent < 12:
             fan_percent = 12
         if fan_percent > 100:
