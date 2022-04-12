@@ -9,7 +9,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from pyatrea import Atrea
 
 from .utils import update_listener
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN, LOGGER, MIN_TIME_BETWEEN_SCANS
 
 
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
@@ -41,7 +41,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         ] = await hass.async_add_executor_job(atrea.loadUserLabels)
 
     atreaCoordinator = DataUpdateCoordinator(
-        hass, LOGGER, name="Atrea resource status", update_method=async_update_data,
+        hass,
+        LOGGER,
+        name="Atrea resource status",
+        update_method=async_update_data,
+        update_interval=MIN_TIME_BETWEEN_SCANS,
     )
 
     atrea = Atrea(entry.data.get(CONF_IP_ADDRESS), entry.data.get(CONF_PASSWORD))
