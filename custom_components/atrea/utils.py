@@ -10,8 +10,8 @@ from .const import (
 from homeassistant.const import CONF_NAME
 
 
-def isAtreaUnit(host):
-    atrea = Atrea(host, "")
+def isAtreaUnit(host, port):
+    atrea = Atrea(host, port)
     return atrea.isAtreaUnit()
 
 

@@ -1,5 +1,5 @@
 from homeassistant import config_entries
-from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD, CONF_NAME
+from homeassistant.const import CONF_IP_ADDRESS, CONF_PORT, CONF_PASSWORD, CONF_NAME
 from homeassistant.core import callback
 from .utils import isAtreaUnit, processFanModes
 import voluptuous as vol
@@ -16,7 +16,7 @@ from pyatrea import Atrea
 
 @config_entries.HANDLERS.register(DOMAIN)
 class FlowHandler(config_entries.ConfigFlow):
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     def async_get_options_flow(config_entry):
@@ -43,22 +43,31 @@ class FlowHandler(config_entries.ConfigFlow):
         """Enter IP Address and verify Tapo device"""
         errors = {}
         host = ""
+        port = 80
         if user_input is not None:
             LOGGER.debug("[ADD DEVICE] Verifying IP address")
             try:
                 host = user_input[CONF_IP_ADDRESS]
+                port = user_input[CONF_PORT]
 
-                if self._async_host_already_configured(host):
-                    LOGGER.debug("[ADD DEVICE][%s] IP already configured.", host)
+                if self._async_host_already_configured(host + ":" + str(port)):
+                    LOGGER.debug(
+                        "[ADD DEVICE][%s:%d] IP:Port already configured.", host, port
+                    )
                     raise Exception("already_configured")
 
                 LOGGER.debug(
-                    "[ADD DEVICE][%s] Verifying IP address being atrea unit", host
+                    "[ADD DEVICE][%s:%d] Verifying IP address being atrea unit",
+                    host,
+                    port,
                 )
-                if not (await self.hass.async_add_executor_job(isAtreaUnit, host)):
+                if not (
+                    await self.hass.async_add_executor_job(isAtreaUnit, host, port)
+                ):
                     raise Exception("not_atrea_unit")
 
                 self.atreaHost = host
+                self.atreaPort = port
                 return await self.async_step_auth()
 
             except Exception as e:
@@ -81,6 +90,7 @@ class FlowHandler(config_entries.ConfigFlow):
                     vol.Required(
                         CONF_IP_ADDRESS, description={"suggested_value": host}
                     ): str,
+                    vol.Required(CONF_PORT, description={"suggested_value": port}): int,
                 }
             ),
             errors=errors,
@@ -92,24 +102,27 @@ class FlowHandler(config_entries.ConfigFlow):
         name = "Atrea"
         password = ""
         host = self.atreaHost
+        port = self.atreaPort
         if user_input is not None:
             try:
-                LOGGER.debug("[ADD DEVICE][%s] Verifying password.", host)
+                LOGGER.debug("[ADD DEVICE][%s:%d] Verifying password.", host, port)
                 name = user_input[CONF_NAME]
-                password = user_input[CONF_PASSWORD]
+                if CONF_PASSWORD in user_input:
+                    password = user_input[CONF_PASSWORD]
 
                 self.atreaPassword = password
 
-                atrea = Atrea(self.atreaHost, self.atreaPassword)
+                atrea = Atrea(self.atreaHost, self.atreaPort, self.atreaPassword)
                 status = await self.hass.async_add_executor_job(atrea.getStatus)
                 if not status:
                     raise Exception("Invalid authentication data")
 
-                LOGGER.debug("[ADD DEVICE][%s] Creating new entry.", host)
+                LOGGER.debug("[ADD DEVICE][%s:%d] Creating new entry.", host, port)
                 return self.async_create_entry(
-                    title=host,
+                    title=host + ":" + str(port),
                     data={
                         CONF_IP_ADDRESS: host,
+                        CONF_PORT: port,
                         CONF_PASSWORD: password,
                         CONF_NAME: name,
                     },
@@ -133,7 +146,7 @@ class FlowHandler(config_entries.ConfigFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_NAME, description={"suggested_value": name}): str,
-                    vol.Required(
+                    vol.Optional(
                         CONF_PASSWORD, description={"suggested_value": password}
                     ): str,
                 }
@@ -150,6 +163,7 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         errors = {}
         host = self.config_entry.data[CONF_IP_ADDRESS]
+        port = self.config_entry.data[CONF_PORT]
 
         name = ""
         if CONF_NAME in self.config_entry.data:
@@ -186,6 +200,8 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
                 LOGGER.debug("Loading password...")
                 if CONF_PASSWORD in user_input:
                     password = user_input[CONF_PASSWORD]
+                else:
+                    password = ""
 
                 LOGGER.debug("Loading fan_modes...")
                 if CONF_FAN_MODES in user_input:
@@ -196,20 +212,23 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
                     raise Exception("Invalid fan mode format")
 
                 LOGGER.debug("Preparing save object: ip, password, name")
-                data = {CONF_IP_ADDRESS: host, CONF_PASSWORD: password, CONF_NAME: name}
+                data = {
+                    CONF_IP_ADDRESS: host,
+                    CONF_PORT: port,
+                    CONF_PASSWORD: password,
+                    CONF_NAME: name,
+                }
                 LOGGER.debug("Preparing save object: fan_modes")
                 data[CONF_FAN_MODES] = fan_modes
                 LOGGER.debug("Preparing save object: presets")
                 data[CONF_PRESETS] = {}
                 for preset in ALL_PRESET_LIST:
                     if preset in user_input:
-                        LOGGER.debug("test")
                         data[CONF_PRESETS][preset] = user_input[preset]
-                        LOGGER.debug("test2")
 
                 LOGGER.debug("Verifying password...")
                 if password != self.config_entry.data[CONF_PASSWORD]:
-                    atrea = Atrea(host, password)
+                    atrea = Atrea(host, port, password)
                     status = await self.hass.async_add_executor_job(atrea.getStatus)
                     if not status:
                         raise Exception("Invalid authentication data")
@@ -233,7 +252,7 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
 
         LOGGER.debug("Preparing form... password, name, fan_modes, presets header")
         spec = {
-            vol.Required(CONF_PASSWORD, description={"suggested_value": password}): str,
+            vol.Optional(CONF_PASSWORD, description={"suggested_value": password}): str,
             vol.Optional(CONF_NAME, description={"suggested_value": name}): str,
             vol.Optional(
                 CONF_FAN_MODES, description={"suggested_value": fan_modes}

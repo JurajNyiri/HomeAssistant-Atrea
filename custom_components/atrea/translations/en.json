@@ -5,7 +5,8 @@
     "step": {
       "ip": {
         "data": {
-          "ip_address": "IP Address"
+          "ip_address": "IP Address",
+          "port": "Port"
         },
         "description": "Enter unit IP address."
       },

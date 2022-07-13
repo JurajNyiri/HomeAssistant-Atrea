@@ -1,5 +1,6 @@
 from homeassistant.const import (
     CONF_IP_ADDRESS,
+    CONF_PORT,
     CONF_PASSWORD,
 )
 from homeassistant.core import HomeAssistant
@@ -15,6 +16,15 @@ from .const import DOMAIN, LOGGER, MIN_TIME_BETWEEN_SCANS
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
     """Migrate old entry."""
     LOGGER.debug("Migrating from version %s", config_entry.version)
+
+    if config_entry.version == 1:
+        new = {**config_entry.data}
+        new[CONF_PORT] = 80
+        config_entry.data = {**new}
+        config_entry.version = 2
+
+    hass.config_entries.async_update_entry(config_entry, data=new)
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
 
@@ -48,7 +58,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         update_interval=MIN_TIME_BETWEEN_SCANS,
     )
 
-    atrea = Atrea(entry.data.get(CONF_IP_ADDRESS), entry.data.get(CONF_PASSWORD))
+    atrea = Atrea(
+        entry.data.get(CONF_IP_ADDRESS),
+        entry.data.get(CONF_PORT),
+        entry.data.get(CONF_PASSWORD),
+    )
 
     status = await hass.async_add_executor_job(atrea.getStatus, False)
 
@@ -66,6 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             ).items(),
             "userLabels": (await hass.async_add_executor_job(atrea.loadUserLabels)),
             "status": status,
+            "model": (await hass.async_add_executor_job(atrea.getModel)),
             "params": (await hass.async_add_executor_job(atrea.getParams, False)),
             "translations": (await hass.async_add_executor_job(atrea.getTranslations)),
             "configDir": (await hass.async_add_executor_job(atrea.getConfigDir)),

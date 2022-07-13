@@ -137,7 +137,9 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def model(self):
-        return self._model["category"] + " " + self._model["model"]
+        if self._model:
+            return self._model["category"] + " " + self._model["model"]
+        return False
 
     @property
     def device_info(self):
@@ -266,7 +268,7 @@ class AtreaDevice(ClimateEntity):
     def manualUpdate(self, updateState=True):
         status = self.data["status"]
         self._id = self.atrea.getID()
-        self._model = self.atrea.getModel()
+        self._model = self.data["model"]
         self._swVersion = self.atrea.getVersion()
         self._warnings = []
         self._alerts = []

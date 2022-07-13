@@ -44,7 +44,9 @@ class AtreaUpdate(UpdateEntity):
 
     @property
     def model(self):
-        return self._model["category"] + " " + self._model["model"]
+        if self._model:
+            return self._model["category"] + " " + self._model["model"]
+        return False
 
     @property
     def device_info(self):
@@ -80,9 +82,9 @@ class AtreaUpdate(UpdateEntity):
 
     def manualUpdate(self, updateState=True):
         status = self.data["status"]
-        self._in_progress = int(status["I10005"]) > 3
+        self._in_progress = "I10005" in status and int(status["I10005"]) > 3
         self._id = self.atrea.getID()
-        self._model = self.atrea.getModel()
+        self._model = self.data["model"]
         self._swVersion = self.atrea.getVersion()
         self._latestVersion = self.atrea.getLatestVersion()
         if self._latestVersion == "0.0":
