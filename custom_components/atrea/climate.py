@@ -345,6 +345,9 @@ class AtreaDevice(ClimateEntity):
             else:
                 self.air_handling_control = "Unknown (" + str(program) + ")"
 
+            if self._current_fan_mode == "0%":
+                self._current_hvac_mode = HVAC_MODE_OFF
+
             # todo fix warning not translated
             params = self.atrea.getParams()
             for warning in params["warning"]:
