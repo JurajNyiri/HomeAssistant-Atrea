@@ -99,6 +99,7 @@ class AtreaDevice(ClimateEntity):
         self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
+        self._zone = -1
 
         self.updatePresetList(preset_list, False)
         self.updateFanList(fan_list, False)
@@ -202,8 +203,7 @@ class AtreaDevice(ClimateEntity):
         attributes["warnings"] = self._warnings
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
-        attributes["cooling"] = self._cooling
-        attributes["heating"] = self._heating
+        attributes['zone'] = self._zone
 
         return attributes
 
@@ -268,6 +268,20 @@ class AtreaDevice(ClimateEntity):
             return HVACAction.COOLING
         else:
             return HVACAction.IDLE
+
+    @property
+    def swing_modes(self):
+        return SWING_MODES
+
+    @property
+    def swing_mode(self):
+        if (self._zone == 0):
+            return SWING_VERTICAL;
+        if (self._zone == 1):
+            return SWING_HORIZONTAL;
+        if (self._zone == 2):
+            return SWING_BOTH;
+        return None
 
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
@@ -344,6 +358,11 @@ class AtreaDevice(ClimateEntity):
                 self._cooling = int(status["C10216"])
             else:
                 self._cooling = -1
+
+            if('H10711' in status):
+                self._zone = int(status['H10711'])
+            else:
+                self._zone = -1
 
             self._current_preset = self.atrea.getMode()
             if self._current_preset == AtreaMode.OFF:
@@ -521,3 +540,29 @@ class AtreaDevice(ClimateEntity):
                 str(temperature),
             )
 
+    def set_swing_mode(self, swing_mode):
+        """Set new target swing operation."""
+        _LOGGER.debug("Setting swing mode to %s", str(swing_mode))
+
+        if (swing_mode == SWING_VERTICAL):
+            self._zone = 0;
+        elif (swing_mode == SWING_HORIZONTAL):
+            self._zone = 1;
+        elif (swing_mode == SWING_BOTH):
+            self._zone = 2;
+        else:
+            _LOGGER.warn(
+                "Zone setting (%s) is not supported.", str(swing_mode))
+            return
+
+        _LOGGER.debug("Setting zone to %s", str(self._zone))
+
+        #Have to set H10703 as it gets reset by the setProgram method
+        if(self.atrea.getValue('H10703') == 1):
+            self.atrea.setCommand("H10703", 2)
+        self.atrea.setCommand("H10711", int(self._zone))
+        if (self.atrea.exec() == False):
+            _LOGGER.debug("Zone set succesfully to %s", str(self._zone))
+        else: 
+            _LOGGER.error("Error setting zone")
+        self.manualUpdate()
