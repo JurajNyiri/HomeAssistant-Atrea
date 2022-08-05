@@ -99,6 +99,8 @@ class AtreaDevice(ClimateEntity):
         self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
+        self._cooling = -1
+        self._heating = -1
         self._zone = -1
 
         self.updatePresetList(preset_list, False)
@@ -359,8 +361,8 @@ class AtreaDevice(ClimateEntity):
             else:
                 self._cooling = -1
 
-            if('H10711' in status):
-                self._zone = int(status['H10711'])
+            if("H10711" in status):
+                self._zone = int(status["H10711"])
             else:
                 self._zone = -1
 
@@ -558,7 +560,7 @@ class AtreaDevice(ClimateEntity):
         _LOGGER.debug("Setting zone to %s", str(self._zone))
 
         #Have to set H10703 as it gets reset by the setProgram method
-        if(self.atrea.getValue('H10703') == 1):
+        if(self.atrea.getValue("H10703") == 1):
             self.atrea.setCommand("H10703", 2)
         self.atrea.setCommand("H10711", int(self._zone))
         if (self.atrea.exec() == False):
