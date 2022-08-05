@@ -3,6 +3,8 @@ import re
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
+from homeassistant.components.climate.const import HVACAction
+
 
 from custom_components.atrea.utils import processFanModes
 
@@ -91,8 +93,6 @@ class AtreaDevice(ClimateEntity):
         self._supply_air_temp = 0.0
         self._requested_temp = 0.0
         self._requested_power = None
-        self._heating = 0
-        self._cooling = 0
 
         self._current_preset = None
         self._current_hvac_mode = None
@@ -202,6 +202,8 @@ class AtreaDevice(ClimateEntity):
         attributes["warnings"] = self._warnings
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
+        attributes["cooling"] = self._cooling
+        attributes["heating"] = self._heating
 
         return attributes
 
@@ -261,11 +263,11 @@ class AtreaDevice(ClimateEntity):
     @property
     def hvac_action(self):
         if (self._heating == 1):
-            return CURRENT_HVAC_HEAT
+            return HVACAction.HEATING
         elif (self._cooling == 1):
-            return CURRENT_HVAC_COOL
+            return HVACAction.COOLING
         else:
-            return CURRENT_HVAC_IDLE
+            return HVACAction.IDLE
 
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):

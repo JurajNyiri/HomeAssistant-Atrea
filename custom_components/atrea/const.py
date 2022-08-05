@@ -8,9 +8,6 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_AUTO,
     HVAC_MODE_FAN_ONLY,
     SUPPORT_FAN_MODE,
-    CURRENT_HVAC_IDLE, 
-    CURRENT_HVAC_HEAT, 
-    CURRENT_HVAC_COOL
 )
 from pyatrea import AtreaMode
 
