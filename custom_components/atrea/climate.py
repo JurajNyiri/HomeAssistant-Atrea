@@ -99,6 +99,8 @@ class AtreaDevice(ClimateEntity):
         self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
+        self._cooling = -1
+        self._heating = -1
 
         self.updatePresetList(preset_list, False)
         self.updateFanList(fan_list, False)
@@ -202,8 +204,6 @@ class AtreaDevice(ClimateEntity):
         attributes["warnings"] = self._warnings
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
-        attributes["cooling"] = self._cooling
-        attributes["heating"] = self._heating
 
         return attributes
 
