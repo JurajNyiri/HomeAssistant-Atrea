@@ -19,6 +19,9 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_FAN_ONLY,
+    SWING_VERTICAL, 
+    SWING_HORIZONTAL, 
+    SWING_BOTH,
 )
 from homeassistant.const import (
     CONF_NAME,
@@ -44,6 +47,7 @@ from .const import (
     ALL_PRESET_LIST,
     ICONS,
     HVAC_MODES,
+    SWING_MODES,
 )
 
 
@@ -546,7 +550,7 @@ class AtreaDevice(ClimateEntity):
 
     def set_swing_mode(self, swing_mode):
         """Set new target swing operation."""
-        _LOGGER.debug("Setting swing mode to %s", str(swing_mode))
+        LOGGER.debug("Setting swing mode to %s", str(swing_mode))
 
         if (swing_mode == SWING_VERTICAL):
             self._zone = 0;
@@ -555,18 +559,20 @@ class AtreaDevice(ClimateEntity):
         elif (swing_mode == SWING_BOTH):
             self._zone = 2;
         else:
-            _LOGGER.warn(
+            LOGGER.warn(
                 "Zone setting (%s) is not supported.", str(swing_mode))
             return
 
-        _LOGGER.debug("Setting zone to %s", str(self._zone))
+        LOGGER.debug("Setting zone to %s", str(self._zone))
 
         #Have to set H10703 as it gets reset by the setProgram method
         if(self.atrea.getValue("H10703") == 1):
             self.atrea.setCommand("H10703", 2)
         self.atrea.setCommand("H10711", int(self._zone))
         if (self.atrea.exec() == False):
-            _LOGGER.debug("Zone set succesfully to %s", str(self._zone))
+            LOGGER.debug("Zone set succesfully to %s", str(self._zone))
         else: 
-            _LOGGER.error("Error setting zone")
+            LOGGER.error("Error setting zone")
+        
         self.manualUpdate()
+
