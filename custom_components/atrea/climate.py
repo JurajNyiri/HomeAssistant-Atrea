@@ -1,5 +1,6 @@
 import time
 import re
+import json
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
@@ -91,6 +92,20 @@ class AtreaDevice(ClimateEntity):
         self._supply_air_temp = 0.0
         self._requested_temp = 0.0
         self._requested_power = None
+        self._co2 = 0.0
+        self._vent_air_temp = 0.0
+        self._filter_change = 0
+        self._defrost = 0
+        self._sup_req = 0
+        self._sup_act_flow = 0
+        self._sup_fan_voltage = 0.0
+        self._eta_req = 0
+        self._eta_act_flow = 0
+        self._eta_fan_voltage = 0.0
+        self._oda_req = 0
+        self._oda_act_flow = 0
+        self._sc_voltage = 0.0
+        self._all_values = ""
 
         self._current_preset = None
         self._current_hvac_mode = None
@@ -200,6 +215,20 @@ class AtreaDevice(ClimateEntity):
         attributes["warnings"] = self._warnings
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
+        attributes['co2'] = self._co2
+        attributes['vent_air_temp'] = self._vent_air_temp
+        attributes['filter_change'] = self._filter_change
+        attributes['defrost'] = self._defrost
+        attributes['supply_required'] = self._sup_req
+        attributes['supply_actual_flow'] = self._sup_act_flow
+        attributes['supply_fan_voltage'] = self._sup_fan_voltage
+        attributes['eta_required'] = self._eta_req
+        attributes['eta_actual_flow'] = self._eta_act_flow
+        attributes['eta_fan_voltage'] = self._eta_fan_voltage
+        attributes['oda_required'] = self._oda_req
+        attributes['oda_actual_flow'] = self._oda_act_flow
+        attributes['sc_voltage'] = self._sc_voltage
+        attributes['all_values'] = self._all_values
 
         return attributes
 
@@ -273,6 +302,9 @@ class AtreaDevice(ClimateEntity):
         self._warnings = []
         self._alerts = []
         if status != False:
+
+            self._all_values = json.dumps(status)
+
             if "I10202" in status:
                 if float(status["I10211"]) > 1300:
                     self._outside_temp = round(
@@ -325,6 +357,70 @@ class AtreaDevice(ClimateEntity):
             self._current_preset = self.atrea.getMode()
             if self._current_preset == AtreaMode.OFF:
                 self._current_hvac_mode = HVAC_MODE_OFF
+
+            if('I10205' in status):
+                # Converting IN1 value to ppm 
+                self._co2 = round(float(status['I10205'])*0.2, 0)
+            else:
+                self._co2 = -1
+
+            if('I10214' in status):
+                self._vent_air_temp = float(status['I10214'])/10
+
+            if('D11183' in status):
+                self._filter_change = int(status['D11183'])
+            else:
+                self._filter_change = -1
+
+            if('D10207' in status):
+                self._defrost = int(status['D10207'])
+            else:
+                self._defrost = -1
+
+            if('I11600' in status):
+                self._sup_req = int(status['I11600'])
+            else:
+                self._sup_req = -1
+
+            if('I11602' in status):
+                self._sup_act_flow = int(status['I11602'])
+            else:
+                self._sup_act_flow = -1
+
+            if('H10200' in status):
+                self._sup_fan_voltage = float(status['H10200'])/1000
+            else:
+                self._sup_fan_voltage = -1.0
+
+            if('I11601' in status):
+                self._eta_req = int(status['I11601'])
+            else:
+                self._eta_req = -1
+
+            if('I11603' in status):
+                self._eta_act_flow = int(status['I11603'])
+            else:
+                self._eta_act_flow = -1
+
+            if('H10201' in status):
+                self._eta_fan_voltage = float(status['H10201'])/1000
+            else:
+                self._eta_fan_voltage = -1.0
+
+            if('I11604' in status):
+                self._oda_req = int(status['I11604'])
+            else:
+                self._oda_req = -1
+
+            if('I11605' in status):
+                self._oda_act_flow = int(status['I11605'])
+            else:
+                self._oda_act_flow = -1
+
+            if('H10204' in status):
+                self._sc_voltage = float(status['H10204'])/1000
+            else:
+                self._sc_voltage = -1.0
 
             program = self.atrea.getProgram()
             if program == AtreaProgram.MANUAL:
