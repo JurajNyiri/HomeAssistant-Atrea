@@ -268,6 +268,8 @@ class AtreaDevice(ClimateEntity):
             return HVACAction.HEATING
         elif (self._cooling == 1):
             return HVACAction.COOLING
+        elif (self._current_hvac_mode == HVAC_MODE_OFF):
+            return HVACAction.OFF
         else:
             return HVACAction.IDLE
 
