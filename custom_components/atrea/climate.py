@@ -224,9 +224,7 @@ class AtreaDevice(ClimateEntity):
         attributes["warnings"] = self._warnings
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
-<<<<<<< HEAD
         attributes['zone'] = self._zone
-=======
         attributes['co2'] = self._co2
         attributes['vent_air_temp'] = self._vent_air_temp
         attributes['filter_change'] = self._filter_change
@@ -241,7 +239,6 @@ class AtreaDevice(ClimateEntity):
         attributes['oda_actual_flow'] = self._oda_act_flow
         attributes['sc_voltage'] = self._sc_voltage
         attributes['all_values'] = self._all_values
->>>>>>> additional_attributes
 
         return attributes
 
@@ -340,14 +337,10 @@ class AtreaDevice(ClimateEntity):
         self._warnings = []
         self._alerts = []
         if status != False:
-<<<<<<< HEAD
-            if "I10211" in status:
-=======
 
             self._all_values = json.dumps(status)
-
-            if "I10202" in status:
->>>>>>> additional_attributes
+            
+            if "I10211" in status:
                 if float(status["I10211"]) > 1300:
                     self._outside_temp = round(
                         ((50 - (float(status["I10211"]) - 65036) / 10) * -1), 1
