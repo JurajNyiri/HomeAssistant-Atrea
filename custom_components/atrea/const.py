@@ -11,7 +11,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_SWING_MODE, 
     SWING_VERTICAL, 
     SWING_HORIZONTAL, 
-    SWING_BOTH
+    SWING_BOTH,
 )
 from pyatrea import AtreaMode
 
