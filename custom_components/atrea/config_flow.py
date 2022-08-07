@@ -257,9 +257,6 @@ class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(
                 CONF_FAN_MODES, description={"suggested_value": fan_modes}
             ): str,
-            vol.Optional(CONF_PRESETS, description={"suggested_value": None}): vol.In(
-                []
-            ),
         }
 
         LOGGER.debug("Preparing form... presets")
