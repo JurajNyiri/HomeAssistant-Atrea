@@ -3,6 +3,8 @@ import re
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
+from homeassistant.components.climate.const import HVACAction
+
 
 from custom_components.atrea.utils import processFanModes
 
@@ -97,6 +99,8 @@ class AtreaDevice(ClimateEntity):
         self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
+        self._cooling = -1
+        self._heating = -1
 
         self.updatePresetList(preset_list, False)
         self.updateFanList(fan_list, False)
@@ -256,6 +260,17 @@ class AtreaDevice(ClimateEntity):
     def program(self):
         return self.air_handling_control
 
+    @property
+    def hvac_action(self):
+        if (self._heating == 1):
+            return HVACAction.HEATING
+        elif (self._cooling == 1):
+            return HVACAction.COOLING
+        elif (self._current_hvac_mode == HVAC_MODE_OFF):
+            return HVACAction.OFF
+        else:
+            return HVACAction.FAN
+
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
         if not self.updatePending:
@@ -273,7 +288,7 @@ class AtreaDevice(ClimateEntity):
         self._warnings = []
         self._alerts = []
         if status != False:
-            if "I10202" in status:
+            if "I10211" in status:
                 if float(status["I10211"]) > 1300:
                     self._outside_temp = round(
                         ((50 - (float(status["I10211"]) - 65036) / 10) * -1), 1
@@ -321,6 +336,16 @@ class AtreaDevice(ClimateEntity):
                 self._current_fan_mode = str(int(self.atrea.getValue("H01001"))) + "%"
             else:
                 self._current_fan_mode = str(self._requested_power) + "%"
+
+            if("C10215" in status):
+                self._heating = int(status["C10215"])
+            else:
+                self._heating = -1
+
+            if("C10216" in status):
+                self._cooling = int(status["C10216"])
+            else:
+                self._cooling = -1
 
             self._current_preset = self.atrea.getMode()
             if self._current_preset == AtreaMode.OFF:
