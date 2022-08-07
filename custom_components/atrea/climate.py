@@ -269,7 +269,7 @@ class AtreaDevice(ClimateEntity):
         elif (self._current_hvac_mode == HVAC_MODE_OFF):
             return HVACAction.OFF
         else:
-            return HVACAction.IDLE
+            return HVACAction.FAN
 
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
