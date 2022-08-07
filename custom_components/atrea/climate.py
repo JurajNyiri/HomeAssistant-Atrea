@@ -304,7 +304,7 @@ class AtreaDevice(ClimateEntity):
         elif (self._current_hvac_mode == HVAC_MODE_OFF):
             return HVACAction.OFF
         else:
-            return HVACAction.IDLE
+            return HVACAction.FAN
 
     @property
     def swing_modes(self):
