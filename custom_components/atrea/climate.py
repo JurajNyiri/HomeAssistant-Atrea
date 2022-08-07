@@ -205,6 +205,14 @@ class AtreaDevice(ClimateEntity):
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
 
+        if self._heating == 1:
+            attributes["hvac_action"] = HVACAction.HEATING
+        elif self._cooling == 1:
+            attributes["hvac_action"] = HVACAction.COOLING
+        elif self._current_hvac_mode == HVAC_MODE_OFF:
+            attributes["hvac_action"] = HVACAction.OFF
+        elif "hvac_action" in attributes:
+            del attributes["hvac_action"]
         return attributes
 
     @property
@@ -259,17 +267,6 @@ class AtreaDevice(ClimateEntity):
     @property
     def program(self):
         return self.air_handling_control
-
-    @property
-    def hvac_action(self):
-        if (self._heating == 1):
-            return HVACAction.HEATING
-        elif (self._cooling == 1):
-            return HVACAction.COOLING
-        elif (self._current_hvac_mode == HVAC_MODE_OFF):
-            return HVACAction.OFF
-        else:
-            return HVACAction.FAN
 
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
@@ -337,12 +334,12 @@ class AtreaDevice(ClimateEntity):
             else:
                 self._current_fan_mode = str(self._requested_power) + "%"
 
-            if("C10215" in status):
+            if "C10215" in status:
                 self._heating = int(status["C10215"])
             else:
                 self._heating = -1
 
-            if("C10216" in status):
+            if "C10216" in status:
                 self._cooling = int(status["C10216"])
             else:
                 self._cooling = -1
@@ -522,4 +519,3 @@ class AtreaDevice(ClimateEntity):
                 "Chosen temperature=%s is incorrect. It needs to be between 10 and 40.",
                 str(temperature),
             )
-
