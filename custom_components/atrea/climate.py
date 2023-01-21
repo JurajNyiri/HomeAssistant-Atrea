@@ -95,6 +95,7 @@ class AtreaDevice(ClimateEntity):
         self._requested_power = None
         self._active_inputs = []
         self._forced_mode = None
+        self._current_power = None
 
         self._current_preset = None
         self._current_hvac_mode = None
@@ -208,6 +209,7 @@ class AtreaDevice(ClimateEntity):
         attributes["program"] = self.air_handling_control
         attributes["active_inputs"] = self._active_inputs
         attributes["forced_mode"] = self._forced_mode.name
+        attributes["current_power"] = self._current_power
 
         if self._heating == 1:
             attributes["hvac_action"] = HVACAction.HEATING
@@ -356,6 +358,9 @@ class AtreaDevice(ClimateEntity):
                     self._active_inputs.append(f"D{inpt + 1}")
 
             self._forced_mode = self.atrea.getForcedMode()
+
+            if "H10704" in status:
+                self._current_power = int(status["H10704"])
 
             self._current_preset = self.atrea.getMode()
             if self._current_preset == AtreaMode.OFF:
