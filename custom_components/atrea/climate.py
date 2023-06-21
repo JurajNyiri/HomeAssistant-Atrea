@@ -89,6 +89,8 @@ class AtreaDevice(ClimateEntity):
         self._outside_temp = 0.0
         self._inside_temp = 0.0
         self._supply_air_temp = 0.0
+        self._exhaust_temp = 0.0
+        self._extract_temp = 0.0
         self._requested_temp = 0.0
         self._requested_power = None
         self._active_inputs = []
@@ -201,6 +203,8 @@ class AtreaDevice(ClimateEntity):
         attributes["inside_temp"] = self._inside_temp
         attributes["supply_air_temp"] = self._supply_air_temp
         attributes["requested_temp"] = self._requested_temp
+        attributes["exhaust_temp"] = self._exhaust_temp
+        attributes["extract_temp"]= self._extract_temp
         attributes["requested_power"] = self._requested_power
         attributes["warnings"] = self._warnings
         attributes["alerts"] = self._alerts
@@ -323,6 +327,12 @@ class AtreaDevice(ClimateEntity):
                 self._supply_air_temp = float(status["I10200"]) / 10
             elif "I00200" in status:
                 self._supply_air_temp = self.atrea.getValue("I00200")
+
+            if "I10214" in status:
+                self._exhaust_temp = float(status["I10214"]) / 10
+
+            if "I10213" in status:
+                self._extract_temp = float(status["I10213"]) / 10
 
             if "H10706" in status:
                 self._requested_temp = float(status["H10706"]) / 10
