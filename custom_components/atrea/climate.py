@@ -23,7 +23,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import (
     CONF_NAME,
     CONF_IP_ADDRESS,
-    TEMP_CELSIUS,
+    UnitOfTemperature,
     ATTR_TEMPERATURE,
 )
 from homeassistant.util import Throttle
@@ -217,7 +217,7 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def temperature_unit(self):
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def target_temperature(self):
