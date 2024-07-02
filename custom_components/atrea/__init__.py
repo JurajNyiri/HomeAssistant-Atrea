@@ -49,6 +49,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN][entry.entry_id][
             "userLabels"
         ] = await hass.async_add_executor_job(atrea.loadUserLabels)
+        hass.data[DOMAIN][entry.entry_id]["supportedForcedModes"] = (
+            await hass.async_add_executor_job(atrea.getSupportedForcedModes)
+        ).items()
 
     atreaCoordinator = DataUpdateCoordinator(
         hass,
@@ -79,6 +82,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 await hass.async_add_executor_job(atrea.getSupportedModes)
             ).items(),
             "userLabels": (await hass.async_add_executor_job(atrea.loadUserLabels)),
+            "supportedForcedModes": (
+                await hass.async_add_executor_job(atrea.getSupportedForcedModes)
+            ).items(),
             "status": status,
             "model": (await hass.async_add_executor_job(atrea.getModel)),
             "params": (await hass.async_add_executor_job(atrea.getParams, False)),
