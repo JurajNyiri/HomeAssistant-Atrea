@@ -9,7 +9,7 @@
   "requirements": [
     "pyatrea==0.9.9"
   ],
-  "version": "6.1.0",
+  "version": "6.1.8",
   "config_flow": true,
   "homeassistant": "2022.4.0"
 }
