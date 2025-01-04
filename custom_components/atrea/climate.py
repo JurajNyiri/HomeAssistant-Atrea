@@ -310,18 +310,9 @@ class AtreaDevice(ClimateEntity):
                 else:
                     self._outside_temp = self.atrea.getValue("I00202")
 
-            # Depending on configuration of ventilation unit, indoor temp is read from different addresses
-            if "H10514" in status:
-                if int(status["H10514"]) == 1:
-                    self._inside_temp = float(status["I10203"]) / 10
-                elif int(status["H10514"]) == 0:
-                    self._inside_temp = float(status["I10207"]) / 10
-                else:
-                    LOGGER.warn(
-                        "Indoor sensor not supported yet. Please contact repository owner with information about your unit."
-                    )
-            elif "I00210" in status:
-                self._inside_temp = self.atrea.getValue("I00210")
+            # inside temperature is defined by T-IDA
+            if "I10215" in status:
+                self._inside_temp = float(status["I10215"]) / 10
 
             if "I10200" in status:
                 self._supply_air_temp = float(status["I10200"]) / 10
