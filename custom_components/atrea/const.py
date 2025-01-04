@@ -1,17 +1,20 @@
 import logging
 from datetime import timedelta
 
-from homeassistant.components.climate.const import (
-    ClimateEntityFeature,
-    HVACMode
-)
+from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
 from pyatrea import AtreaMode
 
 DOMAIN = "atrea"
 LOGGER = logging.getLogger(__name__)
 UPDATE_DELAY = 1  # update delay disabled
 MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
-SUPPORT_FLAGS = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
+SUPPORT_FLAGS = (
+    ClimateEntityFeature.TARGET_TEMPERATURE
+    | ClimateEntityFeature.FAN_MODE
+    | ClimateEntityFeature.PRESET_MODE
+    | ClimateEntityFeature.TURN_OFF
+    | ClimateEntityFeature.TURN_ON
+)
 DEFAULT_NAME = "Atrea"
 STATE_MANUAL = "manual"
 STATE_UNKNOWN = "unknown"
