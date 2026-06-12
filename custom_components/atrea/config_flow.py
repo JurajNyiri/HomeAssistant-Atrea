@@ -157,7 +157,8 @@ class FlowHandler(config_entries.ConfigFlow):
 
 class AtreaOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        #haze 500 - HA 2024.11+ read only atribut
+        #self.config_entry = config_entry
         self.options = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None):
