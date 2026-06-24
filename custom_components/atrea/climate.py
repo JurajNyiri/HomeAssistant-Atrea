@@ -6,7 +6,13 @@ from homeassistant.util import slugify
 from homeassistant.components.climate.const import HVACAction
 
 
-from custom_components.atrea.utils import processFanModes
+from custom_components.atrea.utils import (
+    is_two_zone_power,
+    power_2z_label,
+    power_2z_options,
+    processFanModes,
+    raw_status_temperature,
+)
 
 try:
     from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
@@ -172,7 +178,7 @@ class AtreaDevice(ClimateEntity):
     def icon(self):
         if len(self._alerts) > 0:
             return "mdi:fan-alert"
-        elif self.fan_mode == "0%":
+        elif self.fan_mode in ("0%", "Off"):
             return "mdi:fan-off"
         elif self._current_preset in ICONS:
             return ICONS[self._current_preset]
@@ -210,7 +216,9 @@ class AtreaDevice(ClimateEntity):
         attributes["alerts"] = self._alerts
         attributes["program"] = self.air_handling_control
         attributes["active_inputs"] = self._active_inputs
-        attributes["forced_mode"] = self._forced_mode.name
+        attributes["forced_mode"] = (
+            self._forced_mode.name if self._forced_mode is not None else STATE_UNKNOWN
+        )
         attributes["current_power"] = self._current_power
 
         if self._heating == 1:
@@ -270,6 +278,11 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def fan_modes(self):
+        if is_two_zone_power(self.data["status"]):
+            options = list(power_2z_options(self.data["status"]))
+            if self._current_fan_mode and self._current_fan_mode not in options:
+                options.append(self._current_fan_mode)
+            return options
         return self._fan_list
 
     @property
@@ -295,12 +308,7 @@ class AtreaDevice(ClimateEntity):
         self._active_inputs = []
         if status != False:
             if "I10211" in status:
-                if float(status["I10211"]) > 1300:
-                    self._outside_temp = round(
-                        ((50 - (float(status["I10211"]) - 65036) / 10) * -1), 1
-                    )
-                else:
-                    self._outside_temp = float(status["I10211"]) / 10
+                self._outside_temp = raw_status_temperature(status, "I10211")
             elif "I00202" in status:
                 if self.atrea.getValue("I00202") == 126.0:
                     if self.atrea.getValue("H00511") == 1:
@@ -312,21 +320,21 @@ class AtreaDevice(ClimateEntity):
 
             # inside temperature is defined by T-IDA
             if "I10215" in status:
-                self._inside_temp = float(status["I10215"]) / 10
+                self._inside_temp = raw_status_temperature(status, "I10215")
 
             if "I10212" in status:
-                self._supply_air_temp = float(status["I10212"]) / 10
+                self._supply_air_temp = raw_status_temperature(status, "I10212")
             elif "I00200" in status:
                 self._supply_air_temp = self.atrea.getValue("I00200")
 
             if "I10214" in status:
-                self._exhaust_temp = float(status["I10214"]) / 10
+                self._exhaust_temp = raw_status_temperature(status, "I10214")
 
             if "I10213" in status:
-                self._extract_temp = float(status["I10213"]) / 10
+                self._extract_temp = raw_status_temperature(status, "I10213")
 
             if "H10706" in status:
-                self._requested_temp = float(status["H10706"]) / 10
+                self._requested_temp = raw_status_temperature(status, "H10706")
             elif "H01006" in status:
                 self._requested_temp = self.atrea.getValue("H01006")
 
@@ -335,7 +343,9 @@ class AtreaDevice(ClimateEntity):
             elif "H01005" in status:
                 self._requested_power = int(self.atrea.getValue("H01005"))
 
-            if "H01001" in status:
+            if is_two_zone_power(status):
+                self._current_fan_mode = power_2z_label(status)
+            elif "H01001" in status:
                 self._current_fan_mode = str(int(self.atrea.getValue("H01001"))) + "%"
             else:
                 self._current_fan_mode = str(self._requested_power) + "%"
@@ -384,7 +394,7 @@ class AtreaDevice(ClimateEntity):
             else:
                 self.air_handling_control = "Unknown (" + str(program) + ")"
 
-            if self._current_fan_mode == "0%":
+            if self._current_fan_mode in ("0%", "Off"):
                 self._current_hvac_mode = HVACMode.OFF
 
             # todo fix warning not translated
@@ -403,6 +413,26 @@ class AtreaDevice(ClimateEntity):
             self.async_schedule_update_ha_state(True)
 
     async def async_set_fan_mode(self, fan_mode):
+        if is_two_zone_power(self.data["status"]):
+            options = power_2z_options(self.data["status"])
+            if fan_mode not in options:
+                LOGGER.warn("Power profile %s is not supported.", str(fan_mode))
+                return
+            if (
+                await self.hass.async_add_executor_job(self.atrea.getProgram)
+                == AtreaProgram.WEEKLY
+            ):
+                self.atrea.setProgram(AtreaProgram.TEMPORARY)
+            self.atrea.setCommand("H10708", options[fan_mode])
+
+            self.updatePending = True
+            await self.hass.async_add_executor_job(self.atrea.exec)
+            await self._coordinator.async_request_refresh()
+            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+            self.updatePending = False
+            self.manualUpdate()
+            return
+
         fan_percent = int(re.sub("[^0-9]", "", fan_mode))
         if fan_percent < 12:
             fan_percent = 12

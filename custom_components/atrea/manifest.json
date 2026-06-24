@@ -7,7 +7,8 @@
     "@JurajNyiri"
   ],
   "requirements": [
-    "pyatrea==0.9.9"
+    "pyatrea==0.9.9",
+    "demjson3==3.0.6"
   ],
   "version": "6.1.8",
   "config_flow": true,

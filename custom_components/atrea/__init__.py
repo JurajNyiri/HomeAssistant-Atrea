@@ -2,6 +2,7 @@ from homeassistant.const import (
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_PASSWORD,
+    CONF_NAME,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -12,25 +13,28 @@ from pyatrea import Atrea
 from .utils import update_listener
 from .const import DOMAIN, LOGGER, MIN_TIME_BETWEEN_SCANS
 
+PLATFORMS = ["binary_sensor", "climate", "select", "sensor", "update"]
+
 
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
     """Migrate old entry."""
     LOGGER.debug("Migrating from version %s", config_entry.version)
 
+    new = {**config_entry.data}
     if config_entry.version == 1:
-        new = {**config_entry.data}
         new[CONF_PORT] = 80
-        config_entry.data = {**new}
-        config_entry.version = 2
-
-    hass.config_entries.async_update_entry(config_entry, data=new)
+        hass.config_entries.async_update_entry(config_entry, data=new, version=2)
+        LOGGER.info("Migration to version %s successful", 2)
+        return True
 
     LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    await hass.config_entries.async_unload_platforms(entry, ["climate", "update"])
+    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if DOMAIN in hass.data:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
     return True
 
 
@@ -71,10 +75,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if not status:
         raise ConfigEntryNotReady("Incorrect password or too many signed in users.")
     else:
-        hass.data[DOMAIN] = {}
+        hass.data.setdefault(DOMAIN, {})
 
         hass.data[DOMAIN][entry.entry_id] = {
             "atrea": atrea,
+            "name": entry.data.get(CONF_NAME, "Atrea"),
             "update_listener": entry.add_update_listener(update_listener),
             "coordinator": atreaCoordinator,
             "supportedModes": (
@@ -93,6 +98,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         entry.async_on_unload(hass.data[DOMAIN][entry.entry_id]["update_listener"])
 
         await hass.async_create_task(
-            hass.config_entries.async_forward_entry_setups(entry, ["climate", "update"])
+            hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         )
         return True

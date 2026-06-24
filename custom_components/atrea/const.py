@@ -67,3 +67,33 @@ ICONS = {
 }
 
 HVAC_MODES = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]
+
+POWER_2Z_OPTIONS = {
+    0: {
+        "Off": 0,
+    },
+    1: {
+        "Off": 0,
+        "Min-Vent": 10,
+        "Norm-Vent": 11,
+        "Max-Vent": 12,
+    },
+    2: {
+        "Off": 0,
+        "Min-Circ": 20,
+        "Norm-Circ": 21,
+        "Max-Circ": 22,
+    },
+    3: {
+        "Off": 0,
+        "Min/Min": 30,
+        "Min/Norm": 31,
+        "Min/Max": 32,
+        "Norm/Min": 33,
+        "Norm/Norm": 34,
+        "Norm/Max": 35,
+        "Max/Min": 36,
+        "Max/Norm": 37,
+        "Max/Max": 38,
+    },
+}
