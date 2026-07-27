@@ -16,6 +16,7 @@ from homeassistant.util import slugify
 from .const import DOMAIN
 
 VOLT = "V"
+VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
 
 SENSOR_REGISTERS = {
     "I10205": {
@@ -41,6 +42,54 @@ SENSOR_REGISTERS = {
         "device_class": None,
         "convert": lambda value: int(value) * 10,
     },
+    "I11600": {
+        "key": "supply_requested_airflow",
+        "name": "Supply requested airflow",
+        "unit": VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        "device_class": None,
+        "convert": int,
+        "constant_flow_only": True,
+    },
+    "I11602": {
+        "key": "supply_actual_airflow",
+        "name": "Supply actual airflow",
+        "unit": VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        "device_class": None,
+        "convert": int,
+        "constant_flow_only": True,
+    },
+    "I11601": {
+        "key": "extract_requested_airflow",
+        "name": "Extract requested airflow",
+        "unit": VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        "device_class": None,
+        "convert": int,
+        "constant_flow_only": True,
+    },
+    "I11603": {
+        "key": "extract_actual_airflow",
+        "name": "Extract actual airflow",
+        "unit": VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        "device_class": None,
+        "convert": int,
+        "constant_flow_only": True,
+    },
+    "I11604": {
+        "key": "outdoor_requested_airflow",
+        "name": "Outdoor requested airflow",
+        "unit": VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        "device_class": None,
+        "convert": int,
+        "constant_flow_only": True,
+    },
+    "I11605": {
+        "key": "outdoor_actual_airflow",
+        "name": "Outdoor actual airflow",
+        "unit": VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        "device_class": None,
+        "convert": int,
+        "constant_flow_only": True,
+    },
 }
 
 
@@ -59,7 +108,14 @@ async def async_setup_entry(
         entities = []
 
         for register, description in SENSOR_REGISTERS.items():
-            if register not in status or register in known_registers:
+            if (
+                register not in status
+                or register in known_registers
+                or (
+                    description.get("constant_flow_only")
+                    and str(status.get("H10510")) != "1"
+                )
+            ):
                 continue
             known_registers.add(register)
             entities.append(
@@ -91,6 +147,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         self._register = register
         self._convert = description["convert"]
         self._display_precision = description.get("display_precision")
+        self._constant_flow_only = description.get("constant_flow_only", False)
 
         ip_address = entry.data.get(CONF_IP_ADDRESS)
         device_unique_id = slugify(f"atrea_{ip_address}")
@@ -113,9 +170,15 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Report whether the register is present in the latest status."""
-        return (
+        register_available = (
             super().available
             and self._register in (self._data.get("status") or {})
+        )
+        if not register_available:
+            return False
+        return (
+            not self._constant_flow_only
+            or str((self._data.get("status") or {}).get("H10510")) == "1"
         )
 
     @property
@@ -127,4 +190,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         """Expose the source register for diagnostics."""
-        return {"register": self._register}
+        return {
+            "register": self._register,
+            "constant_flow_only": self._constant_flow_only,
+        }

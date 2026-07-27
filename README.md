@@ -28,3 +28,8 @@ does not provide an acknowledgement action for them.
 IN1 and IN2 are exposed as voltage sensors and SA1 as a percentage sensor. The
 input voltages can be converted to measurements such as CO2 concentration
 according to the scaling specified by the connected 0–10 V sensor.
+
+The integration also exposes airflow requirements and measurements, and
+heat-pump defrost state when their registers are available. Airflow values are
+only meaningful in constant-flow operation; ODA airflow applies to supported
+R5 units.
