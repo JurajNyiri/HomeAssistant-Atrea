@@ -12,7 +12,7 @@ from pyatrea import Atrea
 from .utils import update_listener
 from .const import DOMAIN, LOGGER, MIN_TIME_BETWEEN_SCANS
 
-PLATFORMS = ["button", "climate", "update"]
+PLATFORMS = ["button", "climate", "sensor", "update"]
 
 
 async def async_migrate_entry(hass, config_entry: ConfigEntry):

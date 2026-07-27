@@ -24,3 +24,7 @@ replacement warning can be acknowledged from its button. Alert buttons use the
 unit's global alarm reset command, matching the original web UI. Other warning
 buttons report that their condition cannot be acknowledged because the web UI
 does not provide an acknowledgement action for them.
+
+IN1 and IN2 are exposed as voltage sensors and SA1 as a percentage sensor. The
+input voltages can be converted to measurements such as CO2 concentration
+according to the scaling specified by the connected 0–10 V sensor.

@@ -97,6 +97,7 @@ class AtreaDevice(ClimateEntity):
         self._forced_mode = None
         self._current_power = None
         self._in1 = None
+        self._in2 = None
         self._sa1 = None
 
         self._current_preset = None
@@ -217,6 +218,8 @@ class AtreaDevice(ClimateEntity):
 
         if self._in1 is not None:
             attributes["in1"] = self._in1
+        if self._in2 is not None:
+            attributes["in2"] = self._in2
         if self._sa1 is not None:
             attributes["sa1"] = self._sa1
 
@@ -363,6 +366,10 @@ class AtreaDevice(ClimateEntity):
             # Input IN1
             if "I10205" in status:
                 self._in1 = int(status["I10205"])
+
+            # Input IN2
+            if "I10206" in status:
+                self._in2 = int(status["I10206"])
 
             # Output SA1
             if "H10202" in status:
