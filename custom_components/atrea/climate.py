@@ -325,7 +325,7 @@ class AtreaDevice(ClimateEntity):
                 self._inside_temp = self.convertTemperature(float(status["I10215"]))
 
             if "I10212" in status:
-                self._supply_air_temp = self.convertTemperature((float(status["I10212"]))
+                self._supply_air_temp = self.convertTemperature(float(status["I10212"]))
             elif "I00200" in status:
                 self._supply_air_temp = self.atrea.getValue("I00200")
 
