@@ -96,6 +96,8 @@ class AtreaDevice(ClimateEntity):
         self._active_inputs = []
         self._forced_mode = None
         self._current_power = None
+        self._in1 = None
+        self._sa1 = None
 
         self._current_preset = None
         self._current_hvac_mode = None
@@ -212,6 +214,11 @@ class AtreaDevice(ClimateEntity):
         attributes["active_inputs"] = self._active_inputs
         attributes["forced_mode"] = self._forced_mode.name
         attributes["current_power"] = self._current_power
+
+        if self._in1 not None:
+            attributes["in1"] = self._in1
+        if self._sa1 not None:
+            attributes["sa1"] = self._sa1
 
         if self._heating == 1:
             attributes["hvac_action"] = HVACAction.HEATING
@@ -349,6 +356,14 @@ class AtreaDevice(ClimateEntity):
                 self._cooling = int(status["C10216"])
             else:
                 self._cooling = -1
+
+            # Input IN1
+            if "I10205" in status:
+                self._in1 = int(status["I10205"])
+
+            # Output SA1
+            if "H10202" in status:
+                self._sa1 = int(status["H10202"])
 
             # D1..D4 inputs are reported in D10200..D10203
             for inpt in range(4):
