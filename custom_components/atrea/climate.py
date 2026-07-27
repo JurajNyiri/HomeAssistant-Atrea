@@ -215,9 +215,9 @@ class AtreaDevice(ClimateEntity):
         attributes["forced_mode"] = self._forced_mode.name
         attributes["current_power"] = self._current_power
 
-        if self._in1 not None:
+        if self._in1 is not None:
             attributes["in1"] = self._in1
-        if self._sa1 not None:
+        if self._sa1 is not None:
             attributes["sa1"] = self._sa1
 
         if self._heating == 1:
