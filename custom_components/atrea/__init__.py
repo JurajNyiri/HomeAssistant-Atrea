@@ -22,18 +22,19 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 1:
         new = {**config_entry.data}
         new[CONF_PORT] = 80
-        config_entry.data = {**new}
-        config_entry.version = 2
-
-    hass.config_entries.async_update_entry(config_entry, data=new)
+        hass.config_entries.async_update_entry(
+            config_entry, data=new, version=2
+        )
 
     LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    return True
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+    return unload_ok
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -73,7 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if not status:
         raise ConfigEntryNotReady("Incorrect password or too many signed in users.")
     else:
-        hass.data[DOMAIN] = {}
+        hass.data.setdefault(DOMAIN, {})
 
         hass.data[DOMAIN][entry.entry_id] = {
             "atrea": atrea,

@@ -6,7 +6,7 @@ from homeassistant.util import slugify
 from homeassistant.components.climate.const import HVACAction
 
 
-from custom_components.atrea.utils import processFanModes
+from custom_components.atrea.utils import convert_temperature, processFanModes
 
 try:
     from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
@@ -295,14 +295,6 @@ class AtreaDevice(ClimateEntity):
             self.manualUpdate()
             self.updatePending = False
 
-    # for I10211-I10215 in https://downloads.vodnici.net/uploads/wpforo/attachments/648/3159-RD5parametersCZ.pdf
-    # 65036 ~ -50,0°C ..65535 ~ -0,1°C, 1..1300 ~ 0,1..130,0°C
-    def convertTemperature(self, inputValue: float):
-        if inputValue > 1300:
-            return round(((50 - (float(inputValue) - 65036) / 10) * -1), 1)
-        else:
-            return inputValue/10
-
     def manualUpdate(self, updateState=True):
         status = self.data["status"]
         self._id = self.atrea.getID()
@@ -313,7 +305,7 @@ class AtreaDevice(ClimateEntity):
         self._active_inputs = []
         if status != False:
             if "I10211" in status:
-                self._outside_temp = self.convertTemperature(float(status["I10211"]))
+                self._outside_temp = convert_temperature(status["I10211"])
             elif "I00202" in status:
                 if self.atrea.getValue("I00202") == 126.0:
                     if self.atrea.getValue("H00511") == 1:
@@ -325,18 +317,18 @@ class AtreaDevice(ClimateEntity):
 
             # inside temperature is defined by T-IDA
             if "I10215" in status:
-                self._inside_temp = self.convertTemperature(float(status["I10215"]))
+                self._inside_temp = convert_temperature(status["I10215"])
 
             if "I10212" in status:
-                self._supply_air_temp = self.convertTemperature(float(status["I10212"]))
+                self._supply_air_temp = convert_temperature(status["I10212"])
             elif "I00200" in status:
                 self._supply_air_temp = self.atrea.getValue("I00200")
 
             if "I10214" in status:
-                self._exhaust_temp = self.convertTemperature(float(status["I10214"]))
+                self._exhaust_temp = convert_temperature(status["I10214"])
 
             if "I10213" in status:
-                self._extract_temp = self.convertTemperature(float(status["I10213"]))
+                self._extract_temp = convert_temperature(status["I10213"])
 
             if "H10706" in status:
                 self._requested_temp = float(status["H10706"]) / 10

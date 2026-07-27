@@ -10,6 +10,14 @@ from .const import (
 from homeassistant.const import CONF_NAME
 
 
+def convert_temperature(value):
+    """Convert a signed 16-bit ATREA temperature register to Celsius."""
+    value = int(value)
+    if value > 32767:
+        value -= 65536
+    return value / 10
+
+
 def isAtreaUnit(host, port):
     atrea = Atrea(host, port)
     return atrea.isAtreaUnit()
@@ -46,4 +54,3 @@ async def update_listener(hass, entry):
     hass.data[DOMAIN][entry.entry_id]["climate"].updateFanList(fan_list)
     hass.data[DOMAIN][entry.entry_id]["climate"].updateName(sensor_name)
     hass.data[DOMAIN][entry.entry_id]["update"].updateName(sensor_name)
-

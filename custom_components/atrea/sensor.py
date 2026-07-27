@@ -8,17 +8,71 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_IP_ADDRESS, CONF_NAME, PERCENTAGE
+from homeassistant.const import (
+    CONF_IP_ADDRESS,
+    CONF_NAME,
+    PERCENTAGE,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from .const import DOMAIN
+from .utils import convert_temperature
 
 VOLT = "V"
 VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
 
 SENSOR_REGISTERS = {
+    "I10211": {
+        "key": "outdoor_air_temperature",
+        "name": "Outdoor air temperature",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1,
+        "convert": convert_temperature,
+    },
+    "I10212": {
+        "key": "supply_air_temperature",
+        "name": "Supply air temperature",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1,
+        "convert": convert_temperature,
+    },
+    "I10213": {
+        "key": "extract_air_temperature",
+        "name": "Extract air temperature",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1,
+        "convert": convert_temperature,
+    },
+    "I10214": {
+        "key": "exhaust_air_temperature",
+        "name": "Exhaust air temperature",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1,
+        "convert": convert_temperature,
+    },
+    "I10215": {
+        "key": "indoor_air_temperature",
+        "name": "Indoor air temperature",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1,
+        "convert": convert_temperature,
+    },
+    "I11420": {
+        "key": "average_outdoor_air_temperature",
+        "name": "Average outdoor air temperature",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1,
+        "convert": convert_temperature,
+    },
     "I10205": {
         "key": "in1_voltage",
         "name": "IN1 voltage",

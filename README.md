@@ -33,3 +33,7 @@ The integration also exposes airflow requirements and measurements, and
 heat-pump defrost state when their registers are available. Airflow values are
 only meaningful in constant-flow operation; ODA airflow applies to supported
 R5 units.
+
+Outdoor, averaged outdoor, supply, extract, exhaust, and indoor air
+temperatures are available as native sensors. D1–D4 inputs are exposed as
+binary sensors.
