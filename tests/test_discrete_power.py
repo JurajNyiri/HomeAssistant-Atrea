@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
-from pyatrea import AtreaPowerMode, AtreaProgram
+from pyatrea import Atrea, AtreaPowerMode, AtreaProgram
 
 from custom_components.atrea.climate import AtreaDevice
 from custom_components.atrea.const import POWER_MODES
@@ -79,8 +79,59 @@ async def test_rejected_command_does_not_change_program(climate):
 
 
 @pytest.mark.asyncio
-async def test_failed_command_does_not_disable_future_polling(climate):
+@pytest.mark.parametrize("discrete", [True, False])
+async def test_failed_command_does_not_disable_future_polling(climate, discrete):
     climate.atrea.exec.side_effect = OSError("connection lost")
+    if not discrete:
+        climate._fan_list = ["33%"]
     with pytest.raises(OSError):
-        await climate.async_set_fan_mode("Min-Vent")
+        await climate.async_set_fan_mode("Min-Vent" if discrete else "33%")
     assert climate.updatePending is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("discrete", [True, False])
+async def test_http_failure_is_reported_and_polling_can_resume(climate, discrete):
+    climate.atrea.exec.return_value = False
+    if not discrete:
+        climate._fan_list = ["33%"]
+    with pytest.raises(HomeAssistantError, match="Failed to send"):
+        await climate.async_set_fan_mode("Min-Vent" if discrete else "33%")
+    assert climate.updatePending is False
+    climate.manualUpdate.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,code", [("Off", 0), ("Min-Vent", 10), ("Norm-Vent", 11)])
+async def test_service_to_library_to_http_preserves_discrete_codes(climate, monkeypatch, name, code):
+    unit = Atrea("192.0.2.1", code="test-session")
+    unit.params = {"ids": ["H10708", "H01020"], "coefs": {}, "offsets": {}}
+    unit.status = {"H10700": "0", "H10714": "33"}
+    climate.atrea = unit
+    get = Mock(return_value=Mock(status_code=200, text="OK"))
+    monkeypatch.setattr("pyatrea.requests.get", get)
+
+    await climate.async_set_fan_mode(name)
+
+    get.assert_called_once()
+    url = get.call_args.args[0]
+    assert url.endswith(f"&H10708{code:05}")
+    assert "H01020" not in url
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy", [False, True])
+async def test_percentage_service_to_library_to_http(climate, monkeypatch, legacy):
+    unit = Atrea("192.0.2.1", code="test-session")
+    register = "H01020" if legacy else "H10708"
+    unit.params = {"ids": [register], "coefs": {}, "offsets": {}}
+    unit.status = {"H01015": "1"} if legacy else {"H10700": "0"}
+    climate.atrea = unit
+    climate._fan_list = ["33%"]
+    get = Mock(return_value=Mock(status_code=200, text="OK"))
+    monkeypatch.setattr("pyatrea.requests.get", get)
+
+    await climate.async_set_fan_mode("33%")
+
+    get.assert_called_once()
+    assert get.call_args.args[0].endswith(f"&{register}00033")

@@ -28,7 +28,7 @@ from homeassistant.const import (
 from homeassistant.util import Throttle
 from homeassistant.helpers import device_registry as dr
 from typing import Callable
-from pyatrea import AtreaProgram, AtreaMode, AtreaPowerMode
+from pyatrea import AtreaProgram, AtreaMode
 
 from .const import (
     DOMAIN,
@@ -278,8 +278,12 @@ class AtreaDevice(ClimateEntity):
         return 40
 
     @property
+    def _uses_discrete_power(self):
+        return bool(self._fan_list) and all(mode in POWER_MODES for mode in self._fan_list)
+
+    @property
     def fan_mode(self):
-        if self._fan_list and all(mode in POWER_MODES for mode in self._fan_list):
+        if self._uses_discrete_power:
             try:
                 code = int(self._current_fan_mode.rstrip("%"))
             except (AttributeError, ValueError):
@@ -429,47 +433,35 @@ class AtreaDevice(ClimateEntity):
             self.async_schedule_update_ha_state(True)
 
     async def async_set_fan_mode(self, fan_mode):
-        if self._fan_list and all(mode in POWER_MODES for mode in self._fan_list):
+        if self._uses_discrete_power:
             if fan_mode not in self._fan_list:
                 raise HomeAssistantError("Select a configured discrete fan mode")
-            accepted = await self.hass.async_add_executor_job(
-                self.atrea.setPowerMode, AtreaPowerMode(POWER_MODES[fan_mode])
-            )
-            if not accepted:
-                raise HomeAssistantError("Unit does not support discrete power commands")
-            if await self.hass.async_add_executor_job(self.atrea.getProgram) == AtreaProgram.WEEKLY:
-                self.atrea.setProgram(AtreaProgram.TEMPORARY)
-            self.updatePending = True
+            setter = self.atrea.setPowerMode
+            value = POWER_MODES[fan_mode]
+        else:
+            if fan_mode in POWER_MODES:
+                raise HomeAssistantError("Named fan modes require discrete fan configuration")
             try:
-                await self.hass.async_add_executor_job(self.atrea.exec)
-                await self._coordinator.async_request_refresh()
-                self.manualUpdate()
-            finally:
-                self.updatePending = False
-            return
-        if fan_mode in POWER_MODES:
-            raise HomeAssistantError("Named fan modes require discrete fan configuration")
-        fan_percent = int(re.sub("[^0-9]", "", fan_mode))
-        if fan_percent < 12:
-            fan_percent = 12
-        if fan_percent > 100:
-            fan_percent = 100
-        if fan_percent >= 12 and fan_percent <= 100:
-            if (
-                await self.hass.async_add_executor_job(self.atrea.getProgram)
-                == AtreaProgram.WEEKLY
-            ):
-                self.atrea.setProgram(AtreaProgram.TEMPORARY)
-            self.atrea.setPower(fan_percent)
+                value = int(re.sub("[^0-9]", "", fan_mode))
+            except ValueError as err:
+                raise HomeAssistantError("Invalid fan speed") from err
+            value = max(12, min(value, 100))
+            setter = self.atrea.setPower
 
-            self.updatePending = True
-            await self.hass.async_add_executor_job(self.atrea.exec)
+        if not await self.hass.async_add_executor_job(setter, value):
+            raise HomeAssistantError("Unit rejected the requested fan mode")
+        if await self.hass.async_add_executor_job(self.atrea.getProgram) == AtreaProgram.WEEKLY:
+            self.atrea.setProgram(AtreaProgram.TEMPORARY)
+
+        self.updatePending = True
+        try:
+            if not await self.hass.async_add_executor_job(self.atrea.exec):
+                raise HomeAssistantError("Failed to send the requested fan mode")
             await self._coordinator.async_request_refresh()
             await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-            self.updatePending = False
             self.manualUpdate()
-        else:
-            LOGGER.warn("Power out of range (12,100)")
+        finally:
+            self.updatePending = False
 
     async def async_turn_on(self):
         if self.air_handling_control == "Manual":

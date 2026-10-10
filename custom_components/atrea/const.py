@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
-from pyatrea import AtreaMode
+from pyatrea import AtreaMode, AtreaPowerMode
 
 DOMAIN = "atrea"
 LOGGER = logging.getLogger(__name__)
@@ -22,25 +22,22 @@ CONF_FAN_MODES = "fan_modes"
 CONF_PRESETS = "presets"
 DEFAULT_FAN_MODE_LIST = "12,20,30,40,50,60,70,80,90,100"
 POWER_MODES = {
-    "Off": 0,
-
-    "Min-Vent": 10,
-    "Norm-Vent": 11,
-    "Max-Vent": 12,
-
-    "Min-Circ": 20,
-    "Norm-Circ": 21,
-    "Max-Circ": 22,
-
-    "Min-Circ/Min-Vent": 30,
-    "Min-Circ/Norm-Vent": 31,
-    "Min-Circ/Max-Vent": 32,
-    "Norm-Circ/Min-Vent": 33,
-    "Norm-Circ/Norm-Vent": 34,
-    "Norm-Circ/Max-Vent": 35,
-    "Max-Circ/Min-Vent": 36,
-    "Max-Circ/Norm-Vent": 37,
-    "Max-Circ/Max-Vent": 38,
+    "Off": AtreaPowerMode.OFF,
+    "Min-Vent": AtreaPowerMode.MIN_VENT,
+    "Norm-Vent": AtreaPowerMode.NORM_VENT,
+    "Max-Vent": AtreaPowerMode.MAX_VENT,
+    "Min-Circ": AtreaPowerMode.MIN_CIRC,
+    "Norm-Circ": AtreaPowerMode.NORM_CIRC,
+    "Max-Circ": AtreaPowerMode.MAX_CIRC,
+    "Min-Circ/Min-Vent": AtreaPowerMode.MIN_CIRC_MIN_VENT,
+    "Min-Circ/Norm-Vent": AtreaPowerMode.MIN_CIRC_NORM_VENT,
+    "Min-Circ/Max-Vent": AtreaPowerMode.MIN_CIRC_MAX_VENT,
+    "Norm-Circ/Min-Vent": AtreaPowerMode.NORM_CIRC_MIN_VENT,
+    "Norm-Circ/Norm-Vent": AtreaPowerMode.NORM_CIRC_NORM_VENT,
+    "Norm-Circ/Max-Vent": AtreaPowerMode.NORM_CIRC_MAX_VENT,
+    "Max-Circ/Min-Vent": AtreaPowerMode.MAX_CIRC_MIN_VENT,
+    "Max-Circ/Norm-Vent": AtreaPowerMode.MAX_CIRC_NORM_VENT,
+    "Max-Circ/Max-Vent": AtreaPowerMode.MAX_CIRC_MAX_VENT,
 }
 NUMBER_TO_POWER_MODE_NAMES = {v: k for k, v in POWER_MODES.items()}
 
