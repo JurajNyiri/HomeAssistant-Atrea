@@ -492,15 +492,16 @@ class AtreaDevice(ClimateEntity):
         elif hvac_mode == HVACMode.OFF:
             await self.async_turn_off()
             self._current_hvac_mode = HVACMode.OFF
+            return
 
         if program != None and program != await self.hass.async_add_executor_job(
             self.atrea.getProgram
         ):
             self.atrea.setProgram(program)
 
-        if (
-            mode != None and self._current_preset != mode
-        ) or self.air_handling_control == "Schedule":
+        if mode is not None and (
+            self._current_preset != mode or self.air_handling_control == "Schedule"
+        ):
             self.atrea.setMode(mode)
 
         self.updatePending = True
@@ -520,6 +521,7 @@ class AtreaDevice(ClimateEntity):
 
         if mode == AtreaMode.OFF:
             await self.async_turn_off()
+            return
         if (
             await self.hass.async_add_executor_job(self.atrea.getProgram)
             == AtreaProgram.WEEKLY
