@@ -43,7 +43,7 @@ def processFanModes(fan_modes):
 async def update_listener(hass, entry):
     preset_list = entry.data.get(CONF_PRESETS)
     if preset_list is None:
-        preset_list = ALL_PRESET_LIST
+        preset_list = {preset: True for preset in ALL_PRESET_LIST}
     fan_list = entry.data.get(CONF_FAN_MODES)
     if fan_list is None:
         fan_list = DEFAULT_FAN_MODE_LIST
