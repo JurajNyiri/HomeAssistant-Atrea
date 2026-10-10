@@ -21,6 +21,29 @@ STATE_UNKNOWN = "unknown"
 CONF_FAN_MODES = "fan_modes"
 CONF_PRESETS = "presets"
 DEFAULT_FAN_MODE_LIST = "12,20,30,40,50,60,70,80,90,100"
+POWER_MODES = {
+    "Off": 0,
+
+    "Min-Vent": 10,
+    "Norm-Vent": 11,
+    "Max-Vent": 12,
+
+    "Min-Circ": 20,
+    "Norm-Circ": 21,
+    "Max-Circ": 22,
+
+    "Min-Circ/Min-Vent": 30,
+    "Min-Circ/Norm-Vent": 31,
+    "Min-Circ/Max-Vent": 32,
+    "Norm-Circ/Min-Vent": 33,
+    "Norm-Circ/Norm-Vent": 34,
+    "Norm-Circ/Max-Vent": 35,
+    "Max-Circ/Min-Vent": 36,
+    "Max-Circ/Norm-Vent": 37,
+    "Max-Circ/Max-Vent": 38,
+}
+NUMBER_TO_POWER_MODE_NAMES = {v: k for k, v in POWER_MODES.items()}
+
 ALL_PRESET_LIST = [
     "Off",
     "Automatic",

@@ -7,7 +7,7 @@
     "@JurajNyiri"
   ],
   "requirements": [
-    "pyatrea==0.10.0"
+    "pyatrea @ https://github.com/stepanv/pyatrea/archive/f7e2dc8ea734c89a97a7b295dc49f0e9f68fc2da.zip"
   ],
   "version": "6.2.0",
   "config_flow": true,

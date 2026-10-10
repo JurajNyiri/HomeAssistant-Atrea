@@ -6,6 +6,7 @@ from .const import (
     ALL_PRESET_LIST,
     CONF_FAN_MODES,
     DEFAULT_FAN_MODE_LIST,
+    POWER_MODES,
 )
 from homeassistant.const import CONF_NAME
 
@@ -24,7 +25,9 @@ def isAtreaUnit(host, port):
 
 
 def processFanModes(fan_modes):
-    fanModesArr = fan_modes.split(",")
+    fanModesArr = [mode.strip() for mode in fan_modes.split(",")]
+    if fanModesArr and all(mode in POWER_MODES for mode in fanModesArr):
+        return list(dict.fromkeys(fanModesArr))
     numericArr = []
     convertedFanMode = []
     for fan_mode in fanModesArr:

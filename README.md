@@ -13,6 +13,20 @@ HACS is a community store for Home Assistant. You can install [HACS](https://git
 
 ## Usage:
 
+### Discrete ventilation/circulation power
+
+For a unit configured to use `Power_2Z` in its web interface, the integration's
+fan-mode options can contain named choices such as
+`Off,Min-Vent,Norm-Vent,Max-Vent,Norm-Circ/Min-Vent`.
+Use only named choices for this configuration; do not mix them with percentages.
+The unit's current operating mode can further restrict its usable power choices.
+Percentage-based units should keep numeric choices such as `20,50,100`.
+
+This development branch requires the discrete-power API proposed in
+https://github.com/JurajNyiri/pyatrea/pull/9. Its manifest temporarily pins the
+fork by commit; replace that requirement with an upstream release before merging
+this integration change upstream.
+
 Add climate unit via Integrations (search for Atrea) in Home Assistant UI. You can also simply click the button below if you have MyHomeAssistant redirects set up.
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=atrea)

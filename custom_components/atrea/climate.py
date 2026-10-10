@@ -1,6 +1,7 @@
 import time
 import re
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
 from homeassistant.components.climate.const import HVACAction
@@ -27,7 +28,7 @@ from homeassistant.const import (
 from homeassistant.util import Throttle
 from homeassistant.helpers import device_registry as dr
 from typing import Callable
-from pyatrea import AtreaProgram, AtreaMode
+from pyatrea import AtreaProgram, AtreaMode, AtreaPowerMode
 
 from .const import (
     DOMAIN,
@@ -42,6 +43,8 @@ from .const import (
     ALL_PRESET_LIST,
     ICONS,
     HVAC_MODES,
+    POWER_MODES,
+    NUMBER_TO_POWER_MODE_NAMES,
 )
 
 
@@ -276,6 +279,12 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def fan_mode(self):
+        if self._fan_list and all(mode in POWER_MODES for mode in self._fan_list):
+            try:
+                code = int(self._current_fan_mode.rstrip("%"))
+            except (AttributeError, ValueError):
+                return None
+            return NUMBER_TO_POWER_MODE_NAMES.get(code)
         return self._current_fan_mode
 
     @property
@@ -420,6 +429,26 @@ class AtreaDevice(ClimateEntity):
             self.async_schedule_update_ha_state(True)
 
     async def async_set_fan_mode(self, fan_mode):
+        if self._fan_list and all(mode in POWER_MODES for mode in self._fan_list):
+            if fan_mode not in self._fan_list:
+                raise HomeAssistantError("Select a configured discrete fan mode")
+            accepted = await self.hass.async_add_executor_job(
+                self.atrea.setPowerMode, AtreaPowerMode(POWER_MODES[fan_mode])
+            )
+            if not accepted:
+                raise HomeAssistantError("Unit does not support discrete power commands")
+            if await self.hass.async_add_executor_job(self.atrea.getProgram) == AtreaProgram.WEEKLY:
+                self.atrea.setProgram(AtreaProgram.TEMPORARY)
+            self.updatePending = True
+            try:
+                await self.hass.async_add_executor_job(self.atrea.exec)
+                await self._coordinator.async_request_refresh()
+                self.manualUpdate()
+            finally:
+                self.updatePending = False
+            return
+        if fan_mode in POWER_MODES:
+            raise HomeAssistantError("Named fan modes require discrete fan configuration")
         fan_percent = int(re.sub("[^0-9]", "", fan_mode))
         if fan_percent < 12:
             fan_percent = 12
