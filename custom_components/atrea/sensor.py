@@ -15,8 +15,10 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
+from pyatrea import AtreaMode
 
 from .const import DOMAIN
 from .utils import convert_temperature
@@ -147,6 +149,72 @@ SENSOR_REGISTERS = {
 }
 
 
+# Physical sensor names stay independent of installation orientation and rooms.
+for register, key, name in (
+    ("I10200", "tu1_temperature", "TU1 temperature"),
+    ("I10201", "tu2_temperature", "TU2 temperature"),
+    ("I10203", "teb_temperature", "TEb temperature"),
+    ("I10207", "control_panel_temperature", "Control panel temperature"),
+):
+    SENSOR_REGISTERS[register] = {
+        "key": key, "name": name, "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "display_precision": 1, "convert": convert_temperature,
+        "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
+    }
+
+for register, key, name in (
+    ("H10200", "m1_output_voltage", "M1 output voltage"),
+    ("H10201", "m2_output_voltage", "M2 output voltage"),
+    ("H10203", "sa2_output_voltage", "SA2 output voltage"),
+    ("H10204", "sc_output_voltage", "SC output voltage"),
+):
+    SENSOR_REGISTERS[register] = {
+        "key": key, "name": name, "unit": VOLT,
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "display_precision": 3, "convert": lambda value: int(value) / 1000,
+        "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
+    }
+
+OPERATING_MODES = {int(mode): mode.name.lower() for mode in AtreaMode}
+PROGRAMS = {0: "manual", 1: "weekly", 2: "temporary"}
+SEASONS = {0: "heating", 1: "non_heating"}
+
+for register, key, name, values in (
+    ("H10715", "requested_operating_mode", "Requested operating mode", OPERATING_MODES),
+    ("H10705", "effective_operating_mode", "Effective operating mode", OPERATING_MODES),
+    ("H10700", "operating_program", "Operating program", PROGRAMS),
+    ("I11401", "operating_season", "Operating season", SEASONS),
+):
+    SENSOR_REGISTERS[register] = {
+        "key": key, "name": name, "unit": None,
+        "device_class": SensorDeviceClass.ENUM, "state_class": None,
+        "options": list(values.values()),
+        "convert": lambda value, values=values: values.get(int(value)),
+    }
+
+SENSOR_REGISTERS["H10712"] = {
+    "key": "forced_operating_mode", "name": "Forced operating mode",
+    "unit": None, "device_class": SensorDeviceClass.ENUM, "state_class": None,
+    "options": list(OPERATING_MODES.values()) + ["unknown"],
+    "convert": int, "forced_mode": True,
+}
+
+# Power codes and bypass special values are not percentages or durations.
+# Keep these raw diagnostics optional rather than assign misleading units.
+for register, key, name in (
+    ("H10714", "requested_power_code", "Requested power code"),
+    ("H10704", "effective_power_code", "Effective power code"),
+    ("H10205", "bypass_plus_code", "Bypass SB+ output code"),
+    ("H10206", "bypass_minus_code", "Bypass SB- output code"),
+):
+    SENSOR_REGISTERS[register] = {
+        "key": key, "name": name, "unit": None, "device_class": None,
+        "state_class": None, "convert": int,
+        "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
+    }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -202,6 +270,11 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         self._convert = description["convert"]
         self._display_precision = description.get("display_precision")
         self._constant_flow_only = description.get("constant_flow_only", False)
+        self._forced_mode = description.get("forced_mode", False)
+        self._attr_state_class = description.get("state_class", SensorStateClass.MEASUREMENT)
+        self._attr_options = description.get("options")
+        self._attr_entity_category = description.get("entity_category")
+        self._attr_entity_registry_enabled_default = description.get("enabled", True)
 
         ip_address = entry.data.get(CONF_IP_ADDRESS)
         device_unique_id = slugify(f"atrea_{ip_address}")
@@ -230,6 +303,8 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         )
         if not register_available:
             return False
+        if self.native_value is None:
+            return False
         return (
             not self._constant_flow_only
             or str((self._data.get("status") or {}).get("H10510")) == "1"
@@ -239,7 +314,19 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
     def native_value(self):
         """Return the converted register value."""
         value = (self._data.get("status") or {}).get(self._register)
-        return None if value is None else self._convert(value)
+        if value is None:
+            return None
+        try:
+            if self._forced_mode:
+                code = int(value)
+                modes = dict(self._data.get("supportedForcedModes", []))
+                mode = modes.get(code)
+                if code == 0:
+                    return "off"
+                return mode.name.lower() if mode is not None else "unknown"
+            return self._convert(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -247,4 +334,6 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         return {
             "register": self._register,
             "constant_flow_only": self._constant_flow_only,
+            **({"raw_value": (self._data.get("status") or {}).get(self._register)}
+               if self._attr_state_class is None else {}),
         }

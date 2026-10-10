@@ -37,3 +37,18 @@ R5 units.
 Outdoor, averaged outdoor, supply, extract, exhaust, and indoor air
 temperatures are available as native sensors. D1–D4 inputs are exposed as
 binary sensors.
+
+Requested/effective operating mode, forced operating mode, program, and season
+are exposed as native status sensors. Heat-pump heating and cooling have binary
+sensors. Entities are created only when their registers are present on the unit.
+
+Optional diagnostic sensors are disabled by default: TU1/TU2/TEb/control-panel
+temperatures, M1/M2/SA2/SC output voltages, requested/effective power codes, and
+bypass SB+/SB- output codes. Enable the sensors you need from the device page.
+Physical temperature names avoid assuming the unit's installation orientation.
+The raw power and bypass codes intentionally have no percentage or duration unit;
+their interpretation depends on unit configuration and special register values.
+
+Rename entities for rooms in your own Home Assistant entity settings. Room names,
+CO2 voltage calibration, and installation-specific airflow interpretations belong
+in the installation configuration rather than in this integration.
