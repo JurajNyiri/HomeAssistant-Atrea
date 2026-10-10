@@ -205,8 +205,8 @@ SENSOR_REGISTERS["H10712"] = {
 for register, key, name in (
     ("H10714", "requested_power_code", "Requested power code"),
     ("H10704", "effective_power_code", "Effective power code"),
-    ("H10205", "bypass_plus_code", "Bypass SB+ output code"),
-    ("H10206", "bypass_minus_code", "Bypass SB- output code"),
+    ("H10205", "bypass_plus_code", "Bypass plus code"),
+    ("H10206", "bypass_minus_code", "Bypass minus code"),
 ):
     SENSOR_REGISTERS[register] = {
         "key": key, "name": name, "unit": None, "device_class": None,

@@ -67,3 +67,12 @@ async def test_constant_flow_discovery_does_not_treat_rk5_codes_as_airflow():
     assert entities[0].native_value == 180
     status["H10510"] = "0"
     assert not entities[0].available
+
+
+def test_register_names_produce_distinct_expected_entity_ids():
+    from homeassistant.util import slugify
+    from custom_components.atrea.sensor import SENSOR_REGISTERS
+
+    names = [slugify(description["name"]) for description in SENSOR_REGISTERS.values()]
+    assert len(set(names)) == len(names)
+    assert names == [description["key"] for description in SENSOR_REGISTERS.values()]
