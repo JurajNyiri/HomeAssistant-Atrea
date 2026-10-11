@@ -12,9 +12,9 @@ from custom_components.atrea.binary_sensor import async_setup_entry as setup_bin
 from custom_components.atrea.sensor import async_setup_entry as setup_sensors
 
 
-@pytest.fixture
-def profile():
-    return json.loads((Path(__file__).parent / "fixtures/rk5.json").read_text())
+@pytest.fixture(params=["rk5.json", "rk5_captured.json"])
+def profile(request):
+    return json.loads((Path(__file__).parent / "fixtures" / request.param).read_text())
 
 
 @pytest.mark.asyncio
@@ -40,13 +40,12 @@ async def test_rk5_registers_create_independent_native_entities(profile):
     assert len({entity.unique_id for entity in sensors + binary}) == len(sensors) + len(binary)
     assert all(entity.available for entity in sensors + binary)
     states = {entity.extra_state_attributes["register"]: entity.is_on for entity in binary}
-    assert states == {"D10200": False, "D10201": True, "D10202": False,
-                      "D10203": False, "D10207": False, "C10215": True, "C10216": False}
+    assert states == profile.get("expected_binary", {"D10200": False, "D10201": True, "D10202": False,
+                      "D10203": False, "D10207": False, "C10215": True, "C10216": False})
 
-    # Requested, effective, and forced modes are deliberately different.
-    assert measured["requested_operating_mode"] == "automatic"
-    assert measured["effective_operating_mode"] == "circulation_and_ventilation"
-    assert measured["forced_operating_mode"] == "in1"
+    # The real unit can override power while requested/effective mode stay equal.
+    assert measured["forced_operating_mode"] != measured["requested_operating_mode"]
+    assert measured["requested_power_code"] != measured["effective_power_code"]
 
     data["status"] = False
     assert all(not entity.available for entity in sensors + binary)
