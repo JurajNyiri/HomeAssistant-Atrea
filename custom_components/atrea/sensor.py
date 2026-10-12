@@ -21,21 +21,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 from pyatrea import AtreaMode
 
-from .const import DOMAIN
+from .const import DOMAIN, ALL_PRESET_LIST, POWER_DISPLAY_LABELS
 from .utils import convert_temperature
 
 VOLT = "V"
 VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
-
-# English display names for the documented Power_2Z semantics. The mapping is
-# used only when the unit confirms that profile and supplies the option code.
-POWER_DISPLAY_LABELS = {0: "Off"}
-for base, kind in ((10, "Vent"), (20, "Circ")):
-    for offset, level in enumerate(("Min", "Norm", "Max")):
-        POWER_DISPLAY_LABELS[base + offset] = f"{level}-{kind}"
-for i, circulation in enumerate(("Min", "Norm", "Max")):
-    for j, ventilation in enumerate(("Min", "Norm", "Max")):
-        POWER_DISPLAY_LABELS[30 + 3 * i + j] = f"{circulation}-Circ/{ventilation}-Vent"
 
 INPUT_LABEL_IDS = {"I10205": "IN1", "I10206": "IN2"}
 
@@ -189,7 +179,7 @@ for register, key, name in (
         "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
     }
 
-OPERATING_MODES = {int(mode): mode.name.lower() for mode in AtreaMode}
+OPERATING_MODES = {int(mode): ALL_PRESET_LIST[int(mode)] for mode in AtreaMode}
 PROGRAMS = {0: "manual", 1: "weekly", 2: "temporary"}
 SEASONS = {0: "heating", 1: "non_heating"}
 
@@ -383,8 +373,8 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
                 modes = dict(self._data.get("supportedForcedModes", []))
                 mode = modes.get(code)
                 if code == 0:
-                    return "off"
-                return mode.name.lower() if mode is not None else "unknown"
+                    return OPERATING_MODES[0]
+                return OPERATING_MODES.get(int(mode), "unknown") if mode is not None else "unknown"
             return self._convert(value)
         except (TypeError, ValueError, OverflowError):
             return None
