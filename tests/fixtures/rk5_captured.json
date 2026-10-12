@@ -64,7 +64,7 @@
     "requested_power_code": 33,
     "effective_power_code": 34,
     "bypass_plus_code": 0,
-    "bypass_minus_code": 65534
+    "bypass_minus_code": null
   },
   "expected_binary": {
     "C10215": false,

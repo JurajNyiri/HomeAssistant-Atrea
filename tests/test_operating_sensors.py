@@ -40,7 +40,7 @@ def sensor(register, value):
     ("I11401", "0", "heating"), ("I11401", "1", "non_heating"),
     ("H10712", "7", "in1"), ("H10712", "0", "off"),
     ("H10712", "65000", "unknown"), ("H10714", "11", 11),
-    ("H10205", "65535", 65535),
+    ("H10205", "65535", None),
 ])
 def test_native_values(register, value, expected):
     entity = sensor(register, value)
@@ -83,11 +83,45 @@ def test_enums_do_not_have_measurement_statistics():
     assert not sensor("I11401", "99").available
 
 
-def test_bypass_sentinel_is_not_reported_as_seconds():
-    entity = sensor("H10205", "65535")
-    assert entity.native_unit_of_measurement is None
-    assert entity.state_class is None
-    assert entity.native_value == 65535
+@pytest.mark.parametrize("register", ["H10205", "H10206"])
+@pytest.mark.parametrize("value,expected", [
+    ("0", 0), ("1250", 1250), ("32768", 32768),
+    ("32769", None), ("65534", None), ("65535", None),
+])
+def test_bypass_pulses_and_special_codes(register, value, expected):
+    entity = sensor(register, value)
+    assert entity.native_unit_of_measurement == "ms"
+    assert entity.device_class == SensorDeviceClass.DURATION
+    assert entity.state_class == "measurement"
+    assert entity.native_value == expected
+    assert entity.available
+    assert entity.extra_state_attributes["raw_value"] == value
+    assert not entity.entity_registry_enabled_default
+    suffix = "plus" if register == "H10205" else "minus"
+    assert entity.unique_id == f"atrea_192_0_2_1_bypass_{suffix}_code"
+
+
+@pytest.mark.parametrize("value", [None, "", "bad", "-1", "65536"])
+def test_invalid_bypass_register_is_unavailable(value):
+    assert not sensor("H10205", value).available
+
+
+@pytest.mark.asyncio
+async def test_bypass_measurements_are_filtered_from_device_activity(tmp_path):
+    from homeassistant.core import HomeAssistant
+    from homeassistant.components.logbook.helpers import async_filter_entities
+    hass = HomeAssistant(str(tmp_path))
+    try:
+        entity = sensor("H10205", "1250")
+        hass.states.async_set("sensor.bypass", entity.native_value, {
+            "unit_of_measurement": entity.native_unit_of_measurement,
+            "state_class": entity.state_class,
+            "device_class": entity.device_class,
+        })
+        hass.states.async_set("sensor.program", "manual", {"device_class": "enum"})
+        assert async_filter_entities(hass, ["sensor.bypass", "sensor.program"]) == ["sensor.program"]
+    finally:
+        await hass.async_stop(force=True)
 
 
 @pytest.mark.parametrize("register", ["C10215", "C10216"])

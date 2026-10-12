@@ -67,7 +67,7 @@
     "operating_season": "heating",
     "requested_power_code": 33,
     "effective_power_code": 35,
-    "bypass_plus_code": 65535,
+    "bypass_plus_code": null,
     "bypass_minus_code": 1250
   }
 }

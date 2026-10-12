@@ -13,6 +13,7 @@ from homeassistant.const import (
     CONF_NAME,
     PERCENTAGE,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -200,17 +201,32 @@ SENSOR_REGISTERS["H10712"] = {
     "convert": int, "forced_mode": True,
 }
 
-# Power codes and bypass special values are not percentages or durations.
-# Keep these raw diagnostics optional rather than assign misleading units.
+# Discrete power codes are not percentages. Keep these diagnostics optional.
 for register, key, name in (
     ("H10714", "requested_power_code", "Requested power code"),
     ("H10704", "effective_power_code", "Effective power code"),
-    ("H10205", "bypass_plus_code", "Bypass plus code"),
-    ("H10206", "bypass_minus_code", "Bypass minus code"),
 ):
     SENSOR_REGISTERS[register] = {
         "key": key, "name": name, "unit": None, "device_class": None,
         "state_class": None, "convert": int,
+        "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
+    }
+
+
+# RD5 register reference, page 3: finite pulses use milliseconds (0..32768).
+# Special codes have no finite duration. Preserve them as diagnostic attributes;
+# do not guess a duration or include sentinel values in measurement statistics.
+for register, direction, legacy_key in (
+    ("H10205", "opening", "bypass_plus_code"),
+    ("H10206", "closing", "bypass_minus_code"),
+):
+    SENSOR_REGISTERS[register] = {
+        "key": f"bypass_{direction}_pulse_duration",
+        "unique_id_key": legacy_key,
+        "name": f"Bypass {direction} pulse duration",
+        "unit": UnitOfTime.MILLISECONDS, "device_class": SensorDeviceClass.DURATION,
+        "convert": lambda value: int(value) if 0 <= int(value) <= 32768 else None,
+        "pulse_duration": True,
         "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
     }
 
@@ -271,6 +287,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         self._display_precision = description.get("display_precision")
         self._constant_flow_only = description.get("constant_flow_only", False)
         self._forced_mode = description.get("forced_mode", False)
+        self._pulse_duration = description.get("pulse_duration", False)
         self._attr_state_class = description.get("state_class", SensorStateClass.MEASUREMENT)
         self._attr_options = description.get("options")
         self._attr_entity_category = description.get("entity_category")
@@ -278,9 +295,8 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
 
         ip_address = entry.data.get(CONF_IP_ADDRESS)
         device_unique_id = slugify(f"atrea_{ip_address}")
-        self._attr_unique_id = slugify(
-            f"{device_unique_id}_{description['key']}"
-        )
+        unique_id_key = description.get("unique_id_key", description["key"])
+        self._attr_unique_id = slugify(f"{device_unique_id}_{unique_id_key}")
         self._attr_name = description["name"]
         self._attr_native_unit_of_measurement = description["unit"]
         self._attr_device_class = description["device_class"]
@@ -303,6 +319,12 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         )
         if not register_available:
             return False
+        if self._pulse_duration:
+            try:
+                # A valid special code means connected, but no finite duration.
+                return 0 <= int(self._data["status"][self._register]) <= 65535
+            except (TypeError, ValueError, OverflowError):
+                return False
         if self.native_value is None:
             return False
         return (
@@ -335,5 +357,5 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
             "register": self._register,
             "constant_flow_only": self._constant_flow_only,
             **({"raw_value": (self._data.get("status") or {}).get(self._register)}
-               if self._attr_state_class is None else {}),
+               if self._attr_state_class is None or self._pulse_duration else {}),
         }

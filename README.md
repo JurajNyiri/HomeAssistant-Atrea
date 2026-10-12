@@ -44,10 +44,14 @@ sensors. Entities are created only when their registers are present on the unit.
 
 Optional diagnostic sensors are disabled by default: TU1/TU2/TEb/control-panel
 temperatures, M1/M2/SA2/SC output voltages, requested/effective power codes, and
-bypass SB+/SB- output codes. Enable the sensors you need from the device page.
+bypass opening/closing pulse durations. Enable the sensors you need from the device page.
 Physical temperature names avoid assuming the unit's installation orientation.
-The raw power and bypass codes intentionally have no percentage or duration unit;
-their interpretation depends on unit configuration and special register values.
+Raw power codes have no percentage unit. Bypass pulses use milliseconds; special
+codes have an unknown finite duration and remain available as `raw_value`
+attributes. Measurement sensors do not generate device Activity entries.
+Existing bypass entity unique IDs are retained; templates needing the original
+code must use the `raw_value` attribute instead of the sensor state. Optional
+bypass sensors remain disabled by default. See [register notes](docs/register-reference.md).
 
 Rename entities for rooms in your own Home Assistant entity settings. Room names,
 CO2 voltage calibration, and installation-specific airflow interpretations belong
