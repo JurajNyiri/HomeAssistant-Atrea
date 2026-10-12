@@ -30,12 +30,12 @@ VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
 # English display names for the documented Power_2Z semantics. The mapping is
 # used only when the unit confirms that profile and supplies the option code.
 POWER_DISPLAY_LABELS = {0: "Off"}
-for base, kind in ((10, "ventilation"), (20, "circulation")):
-    for offset, level in enumerate(("Minimum", "Normal", "Maximum")):
-        POWER_DISPLAY_LABELS[base + offset] = f"{level} {kind}"
-for i, circulation in enumerate(("Minimum", "Normal", "Maximum")):
-    for j, ventilation in enumerate(("minimum", "normal", "maximum")):
-        POWER_DISPLAY_LABELS[30 + 3 * i + j] = f"{circulation} circulation / {ventilation} ventilation"
+for base, kind in ((10, "Vent"), (20, "Circ")):
+    for offset, level in enumerate(("Min", "Norm", "Max")):
+        POWER_DISPLAY_LABELS[base + offset] = f"{level}-{kind}"
+for i, circulation in enumerate(("Min", "Norm", "Max")):
+    for j, ventilation in enumerate(("Min", "Norm", "Max")):
+        POWER_DISPLAY_LABELS[30 + 3 * i + j] = f"{circulation}-Circ/{ventilation}-Vent"
 
 INPUT_LABEL_IDS = {"I10205": "IN1", "I10206": "IN2"}
 

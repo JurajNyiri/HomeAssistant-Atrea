@@ -62,8 +62,8 @@
     "forced_operating_mode": "in1",
     "operating_program": "manual",
     "operating_season": "heating",
-    "requested_power_code": "Normal circulation / minimum ventilation",
-    "effective_power_code": "Normal circulation / normal ventilation",
+    "requested_power_code": "Norm-Circ/Min-Vent",
+    "effective_power_code": "Norm-Circ/Norm-Vent",
     "bypass_plus_code": 0,
     "bypass_minus_code": null
   },

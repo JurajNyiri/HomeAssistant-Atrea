@@ -59,7 +59,7 @@ in the installation configuration rather than in this integration.
 
 
 On a confirmed Power_2Z device, requested/effective power diagnostics use named
-fan-setting states (for example, `Normal circulation / minimum ventilation`).
+fan-setting states (for example, `Norm-Circ/Min-Vent`).
 Choices are read from the unit's own GUI metadata. Numeric codes remain in
 `raw_value`, and entity unique IDs are preserved. Unknown codes remain unknown
 with their raw value retained; units without confirmed metadata retain the raw

@@ -157,7 +157,7 @@ def test_device_confirmed_power_codes_have_readable_states(register):
     entry, data = context({register: "33", "C10509": "1"})
     data["powerModeOptions"] = {0: "Off", 33: "Norm/Min"}
     entity = AtreaRegisterSensor(entry, data, register, SENSOR_REGISTERS[register])
-    assert entity.native_value == "Normal circulation / minimum ventilation"
+    assert entity.native_value == "Norm-Circ/Min-Vent"
     assert entity.extra_state_attributes["raw_value"] == "33"
     assert entity.device_class == SensorDeviceClass.ENUM
     assert entity.state_class is None
