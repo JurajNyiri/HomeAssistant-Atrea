@@ -67,7 +67,9 @@ class AtreaRegisterBinarySensor(CoordinatorEntity, BinarySensorEntity):
         super().__init__(data["coordinator"])
         self._data = data
         self._register = register
-        self._attr_name = name
+        label_id = {"D10200": "D1", "D10201": "D2", "D10202": "D3", "D10203": "D4"}.get(register)
+        label = data.get("userLabels", {}).get(label_id)
+        self._attr_name = f"{name} ({label})" if label else name
         self._attr_icon = icon
 
         ip_address = entry.data.get(CONF_IP_ADDRESS)

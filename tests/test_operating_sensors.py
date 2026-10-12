@@ -150,3 +150,44 @@ async def test_discovery_is_incremental_and_does_not_duplicate_entities():
     discover()
     assert add.call_count == 2
     assert len(add.call_args.args[0]) == 1
+
+
+@pytest.mark.parametrize("register", ["H10714", "H10704"])
+def test_device_confirmed_power_codes_have_readable_states(register):
+    entry, data = context({register: "33", "C10509": "1"})
+    data["powerModeOptions"] = {0: "Off", 33: "Norm/Min"}
+    entity = AtreaRegisterSensor(entry, data, register, SENSOR_REGISTERS[register])
+    assert entity.native_value == "Normal circulation / minimum ventilation"
+    assert entity.extra_state_attributes["raw_value"] == "33"
+    assert entity.device_class == SensorDeviceClass.ENUM
+    assert entity.state_class is None
+    assert entity.native_unit_of_measurement is None
+    assert entity.available
+    assert entity.unique_id.endswith("power_code")
+    assert entity.entity_category is None
+    assert entity.entity_registry_enabled_default
+    data["status"][register] = "99"
+    assert entity.native_value is None
+    assert entity.available
+    assert entity.extra_state_attributes["raw_value"] == "99"
+    data["status"]["C10509"] = "0"
+    assert not entity.available
+    assert entity.native_value is None
+
+
+def test_power_33_without_device_metadata_stays_raw():
+    entity = sensor("H10704", "33")
+    assert entity.native_value == 33
+    assert entity.device_class is None
+    assert entity.name == "Effective power code"
+
+
+def test_device_input_names_preserve_register_identity():
+    entry, data = context({"I10205": "3500", "D10200": "1"})
+    data["userLabels"] = {"IN1": "Room A", "D1": "Room B"}
+    analog = AtreaRegisterSensor(entry, data, "I10205", SENSOR_REGISTERS["I10205"])
+    binary = AtreaRegisterBinarySensor(entry, data, "D10200", "D1 input", "mdi:electric-switch")
+    assert analog.name == "IN1 voltage (Room A)"
+    assert analog.unique_id.endswith("in1_voltage")
+    assert binary.name == "D1 input (Room B)"
+    assert binary.unique_id.endswith("d10200")

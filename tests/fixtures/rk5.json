@@ -34,7 +34,8 @@
     "D10202": "0",
     "D10203": "0",
     "D10207": "0",
-    "H10510": "0"
+    "H10510": "0",
+    "C10509": "1"
   },
   "forced_modes": {
     "0": "OFF",
@@ -65,9 +66,27 @@
     "forced_operating_mode": "in1",
     "operating_program": "weekly",
     "operating_season": "heating",
-    "requested_power_code": 33,
-    "effective_power_code": 35,
+    "requested_power_code": "Normal circulation / minimum ventilation",
+    "effective_power_code": "Normal circulation / maximum ventilation",
     "bypass_plus_code": null,
     "bypass_minus_code": 1250
+  },
+  "power_mode_options": {
+    "0": "Off",
+    "10": "Min-Vent",
+    "11": "Norm-Vent",
+    "12": "Max-Vent",
+    "20": "Min-Circ",
+    "21": "Norm-Circ",
+    "22": "Max-Circ",
+    "30": "Min/Min",
+    "31": "Min/Norm",
+    "32": "Min/Max",
+    "33": "Norm/Min",
+    "34": "Norm/Norm",
+    "35": "Norm/Max",
+    "36": "Max/Min",
+    "37": "Max/Norm",
+    "38": "Max/Max"
   }
 }

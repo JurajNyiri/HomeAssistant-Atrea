@@ -56,3 +56,16 @@ bypass sensors remain disabled by default. See [register notes](docs/register-re
 Rename entities for rooms in your own Home Assistant entity settings. Room names,
 CO2 voltage calibration, and installation-specific airflow interpretations belong
 in the installation configuration rather than in this integration.
+
+
+On a confirmed Power_2Z device, requested/effective power diagnostics use named
+fan-setting states (for example, `Normal circulation / minimum ventilation`).
+Choices are read from the unit's own GUI metadata. Numeric codes remain in
+`raw_value`, and entity unique IDs are preserved. Unknown codes remain unknown
+with their raw value retained; units without confirmed metadata retain the raw
+representation. This display feature requires pyatrea's `getPowerModeOptions()`
+API; the integration falls back when that API is unavailable.
+
+Digital-input and IN1/IN2 voltage sensor names use device labels as defaults.
+Rename them in Home Assistant for preferred wording or translations; registry
+name overrides take precedence. Public fixtures use generic room labels only.

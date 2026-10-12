@@ -27,6 +27,18 @@ from .utils import convert_temperature
 VOLT = "V"
 VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
 
+# English display names for the documented Power_2Z semantics. The mapping is
+# used only when the unit confirms that profile and supplies the option code.
+POWER_DISPLAY_LABELS = {0: "Off"}
+for base, kind in ((10, "ventilation"), (20, "circulation")):
+    for offset, level in enumerate(("Minimum", "Normal", "Maximum")):
+        POWER_DISPLAY_LABELS[base + offset] = f"{level} {kind}"
+for i, circulation in enumerate(("Minimum", "Normal", "Maximum")):
+    for j, ventilation in enumerate(("minimum", "normal", "maximum")):
+        POWER_DISPLAY_LABELS[30 + 3 * i + j] = f"{circulation} circulation / {ventilation} ventilation"
+
+INPUT_LABEL_IDS = {"I10205": "IN1", "I10206": "IN2"}
+
 SENSOR_REGISTERS = {
     "I10211": {
         "key": "outdoor_air_temperature",
@@ -288,6 +300,12 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         self._constant_flow_only = description.get("constant_flow_only", False)
         self._forced_mode = description.get("forced_mode", False)
         self._pulse_duration = description.get("pulse_duration", False)
+        self._power_labels = {}
+        if register in ("H10714", "H10704"):
+            self._power_labels = {
+                code: POWER_DISPLAY_LABELS.get(code, label)
+                for code, label in data.get("powerModeOptions", {}).items()
+            }
         self._attr_state_class = description.get("state_class", SensorStateClass.MEASUREMENT)
         self._attr_options = description.get("options")
         self._attr_entity_category = description.get("entity_category")
@@ -300,6 +318,15 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         self._attr_name = description["name"]
         self._attr_native_unit_of_measurement = description["unit"]
         self._attr_device_class = description["device_class"]
+        input_label = data.get("userLabels", {}).get(INPUT_LABEL_IDS.get(register))
+        if input_label:
+            self._attr_name = f"{self._attr_name} ({input_label})"
+        if self._power_labels:
+            self._attr_name = "Requested fan setting" if register == "H10714" else "Effective fan setting"
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = list(dict.fromkeys(self._power_labels.values()))
+            self._attr_entity_category = None
+            self._attr_entity_registry_enabled_default = True
         self._attr_device_info = {
             "identifiers": {(DOMAIN, device_unique_id)},
             "name": entry.data.get(CONF_NAME) or "atrea",
@@ -325,6 +352,14 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
                 return 0 <= int(self._data["status"][self._register]) <= 65535
             except (TypeError, ValueError, OverflowError):
                 return False
+        if self._power_labels:
+            if str(self._data["status"].get("C10509")) != "1":
+                return False
+            try:
+                # Keep an unrecognized code available as raw diagnostic data.
+                return 0 <= int(self._data["status"][self._register]) <= 65535
+            except (TypeError, ValueError, OverflowError):
+                return False
         if self.native_value is None:
             return False
         return (
@@ -339,6 +374,10 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         if value is None:
             return None
         try:
+            if self._power_labels:
+                if str(self._data["status"].get("C10509")) != "1":
+                    return None
+                return self._power_labels.get(int(value))
             if self._forced_mode:
                 code = int(value)
                 modes = dict(self._data.get("supportedForcedModes", []))

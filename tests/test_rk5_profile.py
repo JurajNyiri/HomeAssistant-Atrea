@@ -25,6 +25,7 @@ async def test_rk5_registers_create_independent_native_entities(profile):
     )
     data = {
         "status": profile["status"],
+        "powerModeOptions": {int(code): label for code, label in profile["power_mode_options"].items()},
         "coordinator": SimpleNamespace(last_update_success=True, config_entry=None, async_add_listener=Mock()),
         "supportedForcedModes": [(int(code), AtreaMode[name]) for code, name in profile["forced_modes"].items()],
     }
