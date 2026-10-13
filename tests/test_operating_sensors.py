@@ -191,3 +191,51 @@ def test_device_input_names_preserve_register_identity():
     assert analog.unique_id.endswith("in1_voltage")
     assert binary.name == "D1 input (Room B)"
     assert binary.unique_id.endswith("d10200")
+
+
+@pytest.mark.parametrize("mode,code,label", [
+    (AtreaMode.IN1, 7, "Room A CO₂"),
+    (AtreaMode.D1, 3, "Room B"),
+    (AtreaMode.D2, 4, "Room B"),
+])
+def test_forced_input_uses_device_label_and_retains_identity(mode, code, label):
+    entry, data = context({"H10712": str(code)})
+    data["supportedForcedModes"] = [(code, mode)]
+    data["userLabels"] = {mode.name: label}
+    entity = AtreaRegisterSensor(entry, data, "H10712", SENSOR_REGISTERS["H10712"])
+    assert entity.native_value == f"{label} ({mode.name})"
+    assert entity.native_value in entity.options
+    assert entity.extra_state_attributes["raw_value"] == str(code)
+    data["userLabels"][mode.name] = "Updated room"
+    assert entity.native_value == f"Updated room ({mode.name})"
+    assert entity.native_value in entity.options
+
+
+@pytest.mark.asyncio
+async def test_forced_input_follows_registry_override_after_entity_id_rename(tmp_path):
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers import entity_registry as er, device_registry as dr
+
+    hass = HomeAssistant(str(tmp_path))
+    dr.async_setup(hass)
+    await dr.async_load(hass, load_empty=True)
+    registry = er.async_get(hass)
+    await registry.async_load(load_empty=True)
+    input_entry = registry.async_get_or_create(
+        "sensor", "atrea", "atrea_192_0_2_1_in1_voltage", suggested_object_id="original_input"
+    )
+    registry.async_update_entity(input_entry.entity_id, new_entity_id="sensor.renamed_input", name="Room A CO₂ (IN1)")
+    entry, data = context({"H10712": "7"})
+    data["userLabels"] = {"IN1": "Device room"}
+    entity = AtreaRegisterSensor(entry, data, "H10712", SENSOR_REGISTERS["H10712"])
+    entity.hass = hass
+    assert entity.native_value == "Room A CO₂ (IN1)"
+    assert entity.native_value in entity.options
+    registry.async_update_entity("sensor.renamed_input", name="New room")
+    assert entity.native_value == "New room (IN1)"
+    assert entity.native_value in entity.options
+    registry.async_update_entity("sensor.renamed_input", name=None)
+    assert entity.native_value == "Device room (IN1)"
+    data["userLabels"] = {}
+    assert entity.native_value == "IN1"
+    await hass.async_stop()

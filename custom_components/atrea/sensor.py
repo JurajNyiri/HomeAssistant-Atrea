@@ -22,7 +22,7 @@ from homeassistant.util import slugify
 from pyatrea import AtreaMode
 
 from .const import DOMAIN, ALL_PRESET_LIST, POWER_DISPLAY_LABELS
-from .utils import convert_temperature
+from .utils import convert_temperature, forced_mode_label
 
 VOLT = "V"
 VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
@@ -303,6 +303,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
 
         ip_address = entry.data.get(CONF_IP_ADDRESS)
         device_unique_id = slugify(f"atrea_{ip_address}")
+        self._device_unique_id = device_unique_id
         unique_id_key = description.get("unique_id_key", description["key"])
         self._attr_unique_id = slugify(f"{device_unique_id}_{unique_id_key}")
         self._attr_name = description["name"]
@@ -321,6 +322,18 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
             "identifiers": {(DOMAIN, device_unique_id)},
             "name": entry.data.get(CONF_NAME) or "atrea",
         }
+
+    def _forced_label(self, mode):
+        return forced_mode_label(
+            getattr(self, "hass", None), self._device_unique_id, mode,
+            self._data.get("userLabels", {}),
+        )
+
+    @property
+    def options(self):
+        if self._forced_mode:
+            return list(dict.fromkeys(self._forced_label(mode) for mode in AtreaMode)) + ["unknown"]
+        return self._attr_options
 
     @property
     def suggested_display_precision(self) -> int | None:
@@ -374,7 +387,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
                 mode = modes.get(code)
                 if code == 0:
                     return OPERATING_MODES[0]
-                return OPERATING_MODES.get(int(mode), "unknown") if mode is not None else "unknown"
+                return self._forced_label(mode) if mode is not None else "unknown"
             return self._convert(value)
         except (TypeError, ValueError, OverflowError):
             return None

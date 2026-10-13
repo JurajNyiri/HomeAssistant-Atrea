@@ -69,3 +69,10 @@ API; the integration falls back when that API is unavailable.
 Digital-input and IN1/IN2 voltage sensor names use device labels as defaults.
 Rename them in Home Assistant for preferred wording or translations; registry
 name overrides take precedence. Public fixtures use generic room labels only.
+
+Forced input states reuse the input entity's Home Assistant name override, then
+its decoded device label, with IN1/IN2/D1–D4 retained in parentheses. Renaming an
+input entity ID does not break this lookup: it uses the stable unique ID.
+Missing labels fall back to the input identifier. Enum options follow the same
+resolver as the state. Raw forced-mode codes remain in `raw_value`; historical
+Activity entries keep the wording originally recorded.
