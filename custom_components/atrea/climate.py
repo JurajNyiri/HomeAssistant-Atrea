@@ -71,6 +71,8 @@ async def async_setup_entry(
 
 
 class AtreaDevice(ClimateEntity):
+    _attr_translation_key = "control"
+
     def __init__(
         self, hass, entry, sensor_name, fan_list, preset_list,
     ):
