@@ -37,3 +37,11 @@ R5 units.
 Outdoor, averaged outdoor, supply, extract, exhaust, and indoor air
 temperatures are available as native sensors. D1–D4 inputs are exposed as
 binary sensors.
+
+### Command failure reporting
+
+Climate writes report a failed library command as a Home Assistant error, and
+release the polling guard even if sending, refreshing, or reading back raises.
+An empty queue refreshes state without treating the no-op as a rejected write.
+Existing program/mode/power command choices are unchanged. The library must
+also detect rejected authentication responses; see its command-delivery fix.

@@ -1,6 +1,7 @@
 import time
 import re
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
 from homeassistant.components.climate.const import HVACAction
@@ -290,10 +291,12 @@ class AtreaDevice(ClimateEntity):
     async def async_update(self):
         if not self.updatePending:
             self.updatePending = True
-            await self._coordinator.async_request_refresh()
-            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-            self.manualUpdate()
-            self.updatePending = False
+            try:
+                await self._coordinator.async_request_refresh()
+                await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+                self.manualUpdate()
+            finally:
+                self.updatePending = False
 
     def manualUpdate(self, updateState=True):
         status = self.data["status"]
@@ -419,6 +422,18 @@ class AtreaDevice(ClimateEntity):
         if updateState:
             self.async_schedule_update_ha_state(True)
 
+    async def _async_flush_commands(self):
+        """Report failed writes and always allow polling to resume."""
+        self.updatePending = True
+        try:
+            if self.atrea.commands and not await self.hass.async_add_executor_job(self.atrea.exec):
+                raise HomeAssistantError("Atrea rejected the command or could not be reached")
+            await self._coordinator.async_request_refresh()
+            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
+            self.manualUpdate()
+        finally:
+            self.updatePending = False
+
     async def async_set_fan_mode(self, fan_mode):
         fan_percent = int(re.sub("[^0-9]", "", fan_mode))
         if fan_percent < 12:
@@ -433,12 +448,7 @@ class AtreaDevice(ClimateEntity):
                 self.atrea.setProgram(AtreaProgram.TEMPORARY)
             self.atrea.setPower(fan_percent)
 
-            self.updatePending = True
-            await self.hass.async_add_executor_job(self.atrea.exec)
-            await self._coordinator.async_request_refresh()
-            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-            self.updatePending = False
-            self.manualUpdate()
+            await self._async_flush_commands()
         else:
             LOGGER.warn("Power out of range (12,100)")
 
@@ -454,12 +464,7 @@ class AtreaDevice(ClimateEntity):
             self._current_hvac_mode = HVACMode.FAN_ONLY
         self.atrea.setMode(AtreaMode.VENTILATION)
 
-        self.updatePending = True
-        await self.hass.async_add_executor_job(self.atrea.exec)
-        await self._coordinator.async_request_refresh()
-        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-        self.manualUpdate()
-        self.updatePending = False
+        await self._async_flush_commands()
 
     async def async_turn_off(self):
         if self.air_handling_control == "Manual":
@@ -472,12 +477,7 @@ class AtreaDevice(ClimateEntity):
         self._current_hvac_mode = HVACMode.OFF
         self.atrea.setMode(AtreaMode.OFF)
 
-        self.updatePending = True
-        await self.hass.async_add_executor_job(self.atrea.exec)
-        await self._coordinator.async_request_refresh()
-        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-        self.manualUpdate()
-        self.updatePending = False
+        await self._async_flush_commands()
 
     async def async_set_hvac_mode(self, hvac_mode):
         mode = None
@@ -503,12 +503,7 @@ class AtreaDevice(ClimateEntity):
         ) or self.air_handling_control == "Schedule":
             self.atrea.setMode(mode)
 
-        self.updatePending = True
-        await self.hass.async_add_executor_job(self.atrea.exec)
-        await self._coordinator.async_request_refresh()
-        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-        self.manualUpdate()
-        self.updatePending = False
+        await self._async_flush_commands()
 
     async def async_set_preset_mode(self, preset_mode):
         mode = None
@@ -528,12 +523,7 @@ class AtreaDevice(ClimateEntity):
         if mode != await self.hass.async_add_executor_job(self.atrea.getMode):
             self.atrea.setMode(mode)
 
-        self.updatePending = True
-        await self.hass.async_add_executor_job(self.atrea.exec)
-        await self._coordinator.async_request_refresh()
-        await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-        self.manualUpdate()
-        self.updatePending = False
+        await self._async_flush_commands()
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -542,12 +532,7 @@ class AtreaDevice(ClimateEntity):
             return
         elif temperature >= 10 and temperature <= 40:
             self.atrea.setTemperature(temperature)
-            self.updatePending = True
-            await self.hass.async_add_executor_job(self.atrea.exec)
-            await self._coordinator.async_request_refresh()
-            await self.hass.async_add_executor_job(time.sleep, UPDATE_DELAY / 1000)
-            self.manualUpdate()
-            self.updatePending = False
+            await self._async_flush_commands()
         else:
             LOGGER.warn(
                 "Chosen temperature=%s is incorrect. It needs to be between 10 and 40.",
