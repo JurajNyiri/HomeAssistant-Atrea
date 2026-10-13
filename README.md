@@ -70,9 +70,37 @@ Digital-input and IN1/IN2 voltage sensor names use device labels as defaults.
 Rename them in Home Assistant for preferred wording or translations; registry
 name overrides take precedence. Public fixtures use generic room labels only.
 
-Forced input states reuse the input entity's Home Assistant name override, then
-its decoded device label, with IN1/IN2/D1–D4 retained in parentheses. Renaming an
-input entity ID does not break this lookup: it uses the stable unique ID.
-Missing labels fall back to the input identifier. Enum options follow the same
-resolver as the state. Raw forced-mode codes remain in `raw_value`; historical
-Activity entries keep the wording originally recorded.
+### Name inputs once for readable forced-mode Activity
+
+The **Forced operating mode** sensor reuses the names of the input entities.
+You can configure these names in Home Assistant; no YAML mapping is required.
+
+1. Open **Settings → Devices & services → Entities** and select the Atrea input
+   entity: a **D1–D4 input** binary sensor or an **IN1/IN2 voltage** sensor.
+2. Open that entity's settings and change its **Name**. For example, name the D1
+   input `Bathroom` or the IN1 voltage sensor `Living room CO₂`.
+3. Save. On the next integration poll, the corresponding forced-mode label uses
+   `Bathroom (D1)` or `Living room CO₂ (IN1)`. When that input is the active forced
+   mode, this is the sensor state and the wording used by new Activity entries.
+
+Rename the **input entity**, not the Forced operating mode sensor. This changes
+its display name; you do not need to change its entity ID or restart Home
+Assistant. The lookup uses the input's stable unique ID, so changing its entity
+ID later does not break the link. This propagation applies to forced-input
+states; it does not rename every integration control or sensor.
+
+The name preference is:
+
+1. The input entity's Home Assistant **Name** override.
+2. The input label configured on the Atrea unit.
+3. The input identifier (`IN1`, `IN2`, or `D1`–`D4`).
+
+Clearing the HA name override restores the device-label fallback. The input
+identifier stays in parentheses to distinguish similarly named inputs; an
+existing trailing `(D1)` or `(IN1)` is not added twice. Renaming an input while
+it is the active forced mode also changes the forced-mode state, so automations
+that compare the full named state need the same update. The original forced
+code remains available in `raw_value` for name-independent comparisons.
+
+Historical Activity entries retain their original wording. Household names
+stay in your HA instance or unit configuration, outside the integration source.
