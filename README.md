@@ -37,3 +37,24 @@ R5 units.
 Outdoor, averaged outdoor, supply, extract, exhaust, and indoor air
 temperatures are available as native sensors. D1–D4 inputs are exposed as
 binary sensors.
+
+### Control: Manual or Weekly
+
+The **Control** select changes the unit's program only:
+
+- **Manual**: use manual setpoints, including changes from Home Assistant.
+- **Weekly**: let the unit's weekly schedule supply its setpoints.
+
+It has no Off choice and does not change operating mode, fan setting, or target
+temperature. Off in the operating-mode or fan controls is a separate setting.
+The existing climate auto/fan_only/off API remains for compatibility; its
+fan_only action also requests Ventilation, so use Control to change only the
+program. Creating the Control entity does not send any unit commands.
+
+The selector is discovered when all RD5 program channels, or all legacy RD4
+program channels, are present. It reports Manual/Weekly only when all agree.
+Temporary, mixed, or invalid channel states appear as unknown, with the reason
+and raw channel values in attributes. Temporary is not a selectable option,
+matching the inspected RD5 GUI. A command is reported successful only after a
+fresh readback confirms the requested program; failures produce an HA error.
+Hardware validation targets R-5 RK5; RD4 behavior has automated coverage only.
