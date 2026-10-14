@@ -37,3 +37,11 @@ R5 units.
 Outdoor, averaged outdoor, supply, extract, exhaust, and indoor air
 temperatures are available as native sensors. D1–D4 inputs are exposed as
 binary sensors.
+
+### Climate state refresh
+
+The climate entity listens to the shared unit coordinator. Changes reported by
+unit polling are published to climate consumers, including HomeKit, immediately
+instead of waiting for the independent climate polling cycle. This does not
+change commands or HVAC mode meanings. HomeKit still maps `fan_only` to Cool;
+HA entity translations do not rename Apple's thermostat modes.

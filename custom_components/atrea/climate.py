@@ -1,6 +1,6 @@
 import time
 import re
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import slugify
 from homeassistant.components.climate.const import HVACAction
@@ -134,6 +134,16 @@ class AtreaDevice(ClimateEntity):
 
     async def async_added_to_hass(self) -> None:
         self._enabled = True
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self._handle_coordinator_update)
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Publish fresh unit data without waiting for the climate polling cycle."""
+        if self._coordinator.last_update_success:
+            self.manualUpdate(False)
+            self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self) -> None:
         self._enabled = False
