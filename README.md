@@ -37,3 +37,17 @@ R5 units.
 Outdoor, averaged outdoor, supply, extract, exhaust, and indoor air
 temperatures are available as native sensors. D1–D4 inputs are exposed as
 binary sensors.
+
+### Existing climate mode dropdown
+
+The standard climate popup uses Atrea-specific English display labels: Manual
+for the legacy fan_only value, Weekly for auto, and Off for off. The raw HA
+values and command behavior remain unchanged. No additional select entity is
+created. HA's built-in popup still calls this dropdown Mode; its heading is
+not an integration-provided entity translation.
+
+This is a wording change to the existing compatibility control, not a new
+program API: fan_only still requests Manual plus Ventilation. Legacy temporary
+program handling also uses fan_only, so this dropdown is not an authoritative
+readout of every per-channel program state; the program attribute remains
+available. Off retains its existing operating-mode action.

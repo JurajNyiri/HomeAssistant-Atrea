@@ -71,6 +71,8 @@ async def async_setup_entry(
 
 
 class AtreaDevice(ClimateEntity):
+    _attr_translation_key = "control"
+
     def __init__(
         self, hass, entry, sensor_name, fan_list, preset_list,
     ):
@@ -102,7 +104,6 @@ class AtreaDevice(ClimateEntity):
 
         self._current_preset = None
         self._current_hvac_mode = None
-        self._unit = "Status"
         self.air_handling_control = None
         self._enabled = False
         self._cooling = -1
@@ -166,10 +167,6 @@ class AtreaDevice(ClimateEntity):
     @property
     def should_poll(self):
         return True
-
-    @property
-    def unit_of_measurement(self):
-        return self._unit
 
     @property
     def icon(self):

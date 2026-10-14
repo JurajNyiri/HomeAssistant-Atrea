@@ -69,5 +69,16 @@
       "not_atrea_unit": "Discovered device is not a supported Atrea unit",
       "invalid_fan_mode": "Invalid fan mode format, use only comma and numbers between 12 and 100."
     }
+  },
+  "entity": {
+    "climate": {
+      "control": {
+        "state": {
+          "fan_only": "Manual",
+          "auto": "Weekly",
+          "off": "Off"
+        }
+      }
+    }
   }
 }
