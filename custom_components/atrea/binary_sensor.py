@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
+from .capabilities import supports_register
 from .const import DOMAIN
 
 BINARY_SENSOR_REGISTERS = {
@@ -37,7 +38,8 @@ async def async_setup_entry(
         entities = []
 
         for register, (name, icon) in BINARY_SENSOR_REGISTERS.items():
-            if register not in status or register in known_registers:
+            if (register not in status or register in known_registers
+                    or not supports_register(status, register)):
                 continue
             known_registers.add(register)
             entities.append(
@@ -87,6 +89,7 @@ class AtreaRegisterBinarySensor(CoordinatorEntity, BinarySensorEntity):
             super().available
             and self._register in (self._data.get("status") or {})
             and self.is_on is not None
+            and supports_register(self._data.get("status") or {}, self._register)
         )
 
     @property

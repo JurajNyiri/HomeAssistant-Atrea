@@ -113,3 +113,22 @@ It converts the SC damper command (H10204, 0–10 V) using `100 − voltage × 1
 This is a commanded damper percentage, not a measured recirculated airflow ratio.
 The raw SC output voltage remains an optional diagnostic. No custom template is
 needed. Units without the Power_2Z capability do not receive this interpretation.
+
+### Installed-component discovery
+
+Telemetry uses the unit's configuration as well as the presence of its registers.
+An explicitly absent preheater, bypass, circulation damper, or heater/cooler
+suppresses its corresponding telemetry. Older units with missing or unknown
+component settings retain register-based discovery. Zero output is a valid
+reading and does not mean that a component is absent.
+
+Airflow telemetry supports standard constant flow (H10510=1) and Power_2Z
+constant flow (H10510=4, C10509=1). Outdoor airflow is omitted for explicitly
+non-Power_2Z units. Other fan-control modes do not expose airflow measurements.
+
+Discovery runs after polling: newly installed components appear automatically;
+existing entities become unavailable when their component is removed. Entity
+IDs, history and user overrides are retained, with no registry deletion. Existing
+unused entities can be disabled manually. This covers verified RD5 mappings;
+it does not execute the device's GUI scripts or infer every possible accessory.
+See [component rules](docs/component-discovery.md).

@@ -21,6 +21,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 from pyatrea import AtreaMode
 
+from .capabilities import supports_register
 from .const import DOMAIN, ALL_PRESET_LIST, POWER_DISPLAY_LABELS
 from .utils import convert_temperature, forced_mode_label
 
@@ -261,10 +262,7 @@ async def async_setup_entry(
                 register not in status
                 or description["key"] in known_sensors
                 or (description.get("circulation_only") and str(status.get("C10509")) != "1")
-                or (
-                    description.get("constant_flow_only")
-                    and str(status.get("H10510")) != "1"
-                )
+                or not supports_register(status, register)
             ):
                 continue
             known_sensors.add(description["key"])
@@ -378,10 +376,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
                 return False
         if self.native_value is None:
             return False
-        return (
-            not self._constant_flow_only
-            or str((self._data.get("status") or {}).get("H10510")) == "1"
-        )
+        return supports_register(self._data.get("status") or {}, self._register)
 
     @property
     def native_value(self):
