@@ -52,6 +52,8 @@ def test_older_or_unknown_configuration_preserves_discovery(register, missing):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("setup,register,capability", [
     (setup_sensors, "H10202", "H10504"),
+    (setup_sensors, "H10205", "H11800"),
+    (setup_sensors, "H10206", "H11800"),
     (setup_binary, "C10216", "H10507"),
 ])
 async def test_component_added_removed_and_restored_without_duplicates(setup, register, capability):

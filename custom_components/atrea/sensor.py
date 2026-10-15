@@ -358,7 +358,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         )
         if self._circulation_only and str((self._data.get("status") or {}).get("C10509")) != "1":
             return False
-        if not register_available:
+        if not register_available or not supports_register(self._data.get("status") or {}, self._register):
             return False
         if self._pulse_duration:
             try:
@@ -376,7 +376,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
                 return False
         if self.native_value is None:
             return False
-        return supports_register(self._data.get("status") or {}, self._register)
+        return True
 
     @property
     def native_value(self):
