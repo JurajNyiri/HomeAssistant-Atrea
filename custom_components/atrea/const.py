@@ -21,6 +21,16 @@ STATE_UNKNOWN = "unknown"
 CONF_FAN_MODES = "fan_modes"
 CONF_PRESETS = "presets"
 DEFAULT_FAN_MODE_LIST = "12,20,30,40,50,60,70,80,90,100"
+# English display names for the documented Power_2Z semantics. The mapping is
+# used only when the unit confirms that profile and supplies the option code.
+POWER_DISPLAY_LABELS = {0: "Off"}
+for base, kind in ((10, "Vent"), (20, "Circ")):
+    for offset, level in enumerate(("Min", "Norm", "Max")):
+        POWER_DISPLAY_LABELS[base + offset] = f"{level}-{kind}"
+for i, circulation in enumerate(("Min", "Norm", "Max")):
+    for j, ventilation in enumerate(("Min", "Norm", "Max")):
+        POWER_DISPLAY_LABELS[30 + 3 * i + j] = f"{circulation}-Circ/{ventilation}-Vent"
+
 ALL_PRESET_LIST = [
     "Off",
     "Automatic",

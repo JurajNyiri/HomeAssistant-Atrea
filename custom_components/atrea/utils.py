@@ -1,4 +1,4 @@
-from pyatrea import Atrea
+from pyatrea import Atrea, AtreaMode
 from .const import (
     LOGGER,
     DOMAIN,
@@ -8,6 +8,37 @@ from .const import (
     DEFAULT_FAN_MODE_LIST,
 )
 from homeassistant.const import CONF_NAME
+from homeassistant.helpers import entity_registry as er
+
+
+# Existing entity identities, independent of user-renamed entity IDs.
+INPUT_MODE_ENTITIES = {
+    AtreaMode.IN1: ("sensor", "in1_voltage"),
+    AtreaMode.IN2: ("sensor", "in2_voltage"),
+    AtreaMode.D1: ("binary_sensor", "d10200"),
+    AtreaMode.D2: ("binary_sensor", "d10201"),
+    AtreaMode.D3: ("binary_sensor", "d10202"),
+    AtreaMode.D4: ("binary_sensor", "d10203"),
+}
+
+
+def forced_mode_label(hass, device_unique_id, mode, user_labels):
+    """Use the input's HA override, then its device label, then the mode name."""
+    if mode not in INPUT_MODE_ENTITIES:
+        return ALL_PRESET_LIST[int(mode)]
+    label = user_labels.get(mode.name)
+    if hass is not None:
+        registry = er.async_get(hass)
+        domain, suffix = INPUT_MODE_ENTITIES[mode]
+        entity_id = registry.async_get_entity_id(domain, DOMAIN, f"{device_unique_id}_{suffix}")
+        entry = registry.async_get(entity_id) if entity_id else None
+        if entry and entry.name:
+            label = entry.name
+    if not label or not label.strip() or label.strip() == mode.name:
+        return ALL_PRESET_LIST[int(mode)]
+    label = label.strip()
+    suffix = f"({mode.name})"
+    return label if label.endswith(suffix) else f"{label} {suffix}"
 
 
 def convert_temperature(value):

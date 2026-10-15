@@ -1,0 +1,11 @@
+{
+  "provenance": "Capability values read from R-5 RK5 on 2026-10-15; airflow values transcribed from the user's flow-monitor screenshot. Other readings are synthetic. No household labels or identifiers.",
+  "status": {
+    "H10503": "2", "H10504": "0", "H10507": "1", "H10517": "0",
+    "H11700": "1", "H11800": "1", "C10509": "1", "H10510": "4",
+    "H10202": "0", "H10203": "0", "H10204": "2900",
+    "H10205": "0", "H10206": "0", "C10215": "0", "C10216": "0", "D10207": "0",
+    "I11600": "600", "I11601": "180", "I11602": "589",
+    "I11603": "182", "I11604": "180", "I11605": "177"
+  }
+}

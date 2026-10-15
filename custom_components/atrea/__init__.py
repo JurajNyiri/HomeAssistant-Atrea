@@ -84,6 +84,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 await hass.async_add_executor_job(atrea.getSupportedModes)
             ).items(),
             "userLabels": (await hass.async_add_executor_job(atrea.loadUserLabels)),
+            "powerModeOptions": (
+                await hass.async_add_executor_job(atrea.getPowerModeOptions)
+                if hasattr(atrea, "getPowerModeOptions") else {}
+            ),
             "supportedForcedModes": (
                 await hass.async_add_executor_job(atrea.getSupportedForcedModes)
             ).items(),

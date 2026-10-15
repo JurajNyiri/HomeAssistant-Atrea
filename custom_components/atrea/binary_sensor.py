@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
+from .capabilities import supports_register
 from .const import DOMAIN
 
 BINARY_SENSOR_REGISTERS = {
@@ -17,6 +18,8 @@ BINARY_SENSOR_REGISTERS = {
     "D10202": ("D3 input", "mdi:electric-switch"),
     "D10203": ("D4 input", "mdi:electric-switch"),
     "D10207": ("Heat pump defrost", "mdi:snowflake-melt"),
+    "C10215": ("Heat pump heating", "mdi:heat-pump"),
+    "C10216": ("Heat pump cooling", "mdi:snowflake"),
 }
 
 
@@ -35,7 +38,8 @@ async def async_setup_entry(
         entities = []
 
         for register, (name, icon) in BINARY_SENSOR_REGISTERS.items():
-            if register not in status or register in known_registers:
+            if (register not in status or register in known_registers
+                    or not supports_register(status, register)):
                 continue
             known_registers.add(register)
             entities.append(
@@ -65,7 +69,9 @@ class AtreaRegisterBinarySensor(CoordinatorEntity, BinarySensorEntity):
         super().__init__(data["coordinator"])
         self._data = data
         self._register = register
-        self._attr_name = name
+        label_id = {"D10200": "D1", "D10201": "D2", "D10202": "D3", "D10203": "D4"}.get(register)
+        label = data.get("userLabels", {}).get(label_id)
+        self._attr_name = f"{name} ({label})" if label else name
         self._attr_icon = icon
 
         ip_address = entry.data.get(CONF_IP_ADDRESS)
@@ -82,13 +88,17 @@ class AtreaRegisterBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return (
             super().available
             and self._register in (self._data.get("status") or {})
+            and self.is_on is not None
+            and supports_register(self._data.get("status") or {}, self._register)
         )
 
     @property
     def is_on(self) -> bool | None:
-        """Return whether heat-pump defrost is active."""
+        """Return whether the operating state is active."""
         value = (self._data.get("status") or {}).get(self._register)
-        return None if value is None else str(value) == "1"
+        if str(value) not in ("0", "1"):
+            return None
+        return str(value) == "1"
 
     @property
     def extra_state_attributes(self) -> dict:
