@@ -65,7 +65,8 @@
     "requested_power_code": "Norm-Circ/Min-Vent",
     "effective_power_code": "Norm-Circ/Norm-Vent",
     "bypass_plus_code": 0,
-    "bypass_minus_code": null
+    "bypass_minus_code": null,
+    "circulation": 70.4
   },
   "expected_binary": {
     "C10215": false,

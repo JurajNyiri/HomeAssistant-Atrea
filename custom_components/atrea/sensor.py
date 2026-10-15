@@ -179,6 +179,15 @@ for register, key, name in (
         "entity_category": EntityCategory.DIAGNOSTIC, "enabled": False,
     }
 
+# R5/Power_2Z circulation damper command: 0 V = circulation, 10 V = ventilation.
+# Keep the raw voltage diagnostic as a separate entity.
+CIRCULATION_SENSOR = {
+    "key": "circulation", "name": "Circulation", "unit": PERCENTAGE,
+    "device_class": None, "display_precision": 0,
+    "convert": lambda value: 100 - int(value) / 100 if 0 <= int(value) <= 10000 else None,
+    "circulation_only": True,
+}
+
 OPERATING_MODES = {int(mode): ALL_PRESET_LIST[int(mode)] for mode in AtreaMode}
 PROGRAMS = {0: "manual", 1: "weekly", 2: "temporary"}
 SEASONS = {0: "heating", 1: "non_heating"}
@@ -241,23 +250,24 @@ async def async_setup_entry(
     """Create sensors for registers supported by the unit."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator = data["coordinator"]
-    known_registers: set[str] = set()
+    known_sensors: set[str] = set()
 
     def async_discover_sensors() -> None:
         status = data.get("status") or {}
         entities = []
 
-        for register, description in SENSOR_REGISTERS.items():
+        for register, description in (*SENSOR_REGISTERS.items(), ("H10204", CIRCULATION_SENSOR)):
             if (
                 register not in status
-                or register in known_registers
+                or description["key"] in known_sensors
+                or (description.get("circulation_only") and str(status.get("C10509")) != "1")
                 or (
                     description.get("constant_flow_only")
                     and str(status.get("H10510")) != "1"
                 )
             ):
                 continue
-            known_registers.add(register)
+            known_sensors.add(description["key"])
             entities.append(
                 AtreaRegisterSensor(entry, data, register, description)
             )
@@ -289,6 +299,7 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
         self._display_precision = description.get("display_precision")
         self._constant_flow_only = description.get("constant_flow_only", False)
         self._forced_mode = description.get("forced_mode", False)
+        self._circulation_only = description.get("circulation_only", False)
         self._pulse_duration = description.get("pulse_duration", False)
         self._power_labels = {}
         if register in ("H10714", "H10704"):
@@ -347,6 +358,8 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
             super().available
             and self._register in (self._data.get("status") or {})
         )
+        if self._circulation_only and str((self._data.get("status") or {}).get("C10509")) != "1":
+            return False
         if not register_available:
             return False
         if self._pulse_duration:

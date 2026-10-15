@@ -104,3 +104,12 @@ code remains available in `raw_value` for name-independent comparisons.
 
 Historical Activity entries retain their original wording. Household names
 stay in your HA instance or unit configuration, outside the integration source.
+
+### Circulation
+
+On Power_2Z circulation units (validated on R-5 RK5), the enabled **Circulation**
+sensor shows **100% for circulation only** and **0% for ventilation only**.
+It converts the SC damper command (H10204, 0–10 V) using `100 − voltage × 10`.
+This is a commanded damper percentage, not a measured recirculated airflow ratio.
+The raw SC output voltage remains an optional diagnostic. No custom template is
+needed. Units without the Power_2Z capability do not receive this interpretation.

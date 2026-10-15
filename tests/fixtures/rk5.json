@@ -69,7 +69,8 @@
     "requested_power_code": "Norm-Circ/Min-Vent",
     "effective_power_code": "Norm-Circ/Max-Vent",
     "bypass_plus_code": null,
-    "bypass_minus_code": 1250
+    "bypass_minus_code": 1250,
+    "circulation": 75
   },
   "power_mode_options": {
     "0": "Off",

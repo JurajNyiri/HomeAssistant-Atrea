@@ -239,3 +239,33 @@ async def test_forced_input_follows_registry_override_after_entity_id_rename(tmp
     data["userLabels"] = {}
     assert entity.native_value == "IN1"
     await hass.async_stop()
+
+
+@pytest.mark.parametrize("raw,expected", [("0", 100), ("5000", 50), ("10000", 0),
+    ("1234", 87.66), ("-1", None), ("10001", None), ("65535", None), ("bad", None)])
+def test_circulation_command_percentage(raw, expected):
+    from custom_components.atrea.sensor import CIRCULATION_SENSOR
+    entry, data = context({"H10204": raw, "C10509": "1"})
+    entity = AtreaRegisterSensor(entry, data, "H10204", CIRCULATION_SENSOR)
+    assert entity.native_value == expected
+    assert entity.available == (expected is not None)
+    assert entity.native_unit_of_measurement == "%"
+    assert entity.entity_registry_enabled_default
+    assert entity.unique_id.endswith("_circulation")
+    data["status"]["C10509"] = "0"
+    assert not entity.available
+
+
+@pytest.mark.asyncio
+async def test_circulation_discovery_keeps_voltage_and_requires_capability():
+    entry, data = context({"H10204": "5000"})
+    hass = SimpleNamespace(data={"atrea": {"test": data}})
+    add = Mock()
+    await async_setup_entry(hass, entry, add)
+    assert [e.name for e in add.call_args.args[0]] == ["SC output voltage"]
+    discover = data["coordinator"].async_add_listener.call_args.args[0]
+    data["status"]["C10509"] = "1"
+    discover()
+    assert [e.name for e in add.call_args.args[0]] == ["Circulation"]
+    discover()
+    assert add.call_count == 2
