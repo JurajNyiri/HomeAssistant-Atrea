@@ -69,7 +69,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         entry.data.get(CONF_PASSWORD),
     )
 
-    status = await hass.async_add_executor_job(atrea.getStatus, False)
+    # A connection error at startup (e.g. no network yet) must be retried by HA,
+    # not end in setup_error, which is never retried.
+    try:
+        status = await hass.async_add_executor_job(atrea.getStatus, False)
+    except requests.exceptions.RequestException as err:
+        raise ConfigEntryNotReady(f"Cannot connect to Atrea unit: {err}") from err
+
+    
 
     if not status:
         raise ConfigEntryNotReady("Incorrect password or too many signed in users.")
