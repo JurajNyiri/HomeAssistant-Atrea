@@ -101,6 +101,7 @@ class AtreaDevice(ClimateEntity):
         self._sa1 = None
 
         self._current_preset = None
+        self._requested_preset = None
         self._current_hvac_mode = None
         self._unit = "Status"
         self.air_handling_control = None
@@ -251,10 +252,13 @@ class AtreaDevice(ClimateEntity):
 
     @property
     def preset_mode(self):
-        if self._current_preset.name and self._current_preset.name in self._userLabels:
-            return self._userLabels[self._current_preset.name]
-        elif self._current_preset < len(ALL_PRESET_LIST):
-            return ALL_PRESET_LIST[self._current_preset]
+        preset = self._requested_preset
+        if preset is None:
+            return None
+        if preset.name and preset.name in self._userLabels:
+            return self._userLabels[preset.name]
+        elif preset < len(ALL_PRESET_LIST):
+            return ALL_PRESET_LIST[preset]
         else:
             return STATE_UNKNOWN
 
@@ -379,6 +383,16 @@ class AtreaDevice(ClimateEntity):
                 self._current_power = int(status["H10704"])
 
             self._current_preset = self.atrea.getMode()
+            # The selector edits the requested mode. An input can change the
+            # effective mode without changing that request.
+            if "H10715" in status:
+                try:
+                    self._requested_preset = AtreaMode(int(status["H10715"]))
+                except (TypeError, ValueError):
+                    self._requested_preset = None
+            else:
+                # Older units only expose the mode returned by getMode().
+                self._requested_preset = self._current_preset
             if self._current_preset == AtreaMode.OFF:
                 self._current_hvac_mode = HVACMode.OFF
 
