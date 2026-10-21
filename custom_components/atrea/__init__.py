@@ -4,11 +4,13 @@ from homeassistant.const import (
     CONF_PASSWORD,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.exceptions import ConfigEntryNotReady
 from pyatrea import Atrea
 
+from .activity import ActivityLog
 from .utils import update_listener
 from .const import DOMAIN, LOGGER, MIN_TIME_BETWEEN_SCANS
 
@@ -33,7 +35,9 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if activity_log := (entry_data or {}).get("activity_log"):
+            await activity_log.async_stop()
     return unload_ok
 
 
@@ -42,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN][entry.entry_id]["status"] = await hass.async_add_executor_job(
             atrea.getStatus, False
         )
+        hass.data[DOMAIN][entry.entry_id]["status_observed_at"] = dt_util.now().replace(tzinfo=None).isoformat()
         hass.data[DOMAIN][entry.entry_id]["params"] = await hass.async_add_executor_job(
             atrea.getParams, False
         )
@@ -70,6 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     status = await hass.async_add_executor_job(atrea.getStatus, False)
+    status_observed_at = dt_util.now().replace(tzinfo=None).isoformat()
 
     if not status:
         raise ConfigEntryNotReady("Incorrect password or too many signed in users.")
@@ -88,6 +94,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 await hass.async_add_executor_job(atrea.getSupportedForcedModes)
             ).items(),
             "status": status,
+            "status_observed_at": status_observed_at,
             "model": (await hass.async_add_executor_job(atrea.getModel)),
             "params": (await hass.async_add_executor_job(atrea.getParams, False)),
             "translations": (await hass.async_add_executor_job(atrea.getTranslations)),
@@ -98,4 +105,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         await hass.async_create_task(
             hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         )
+        activity_log = ActivityLog(hass, entry, atrea, hass.data[DOMAIN][entry.entry_id])
+        hass.data[DOMAIN][entry.entry_id]["activity_log"] = activity_log
+        await activity_log.async_start()
         return True
