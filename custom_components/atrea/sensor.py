@@ -18,13 +18,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
-from .const import DOMAIN
+from .activity import input_label, input_for_mode
+from .const import DOMAIN, ALL_PRESET_LIST
 from .utils import convert_temperature
 
 VOLT = "V"
 VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR = "m³/h"
 
 SENSOR_REGISTERS = {
+    "H10712": {
+        "key": "forced_operating_mode", "name": "Forced operating mode",
+        "unit": None, "device_class": None, "convert": int,
+    },
     "I10211": {
         "key": "outdoor_air_temperature",
         "name": "Outdoor air temperature",
@@ -198,7 +203,10 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
     ) -> None:
         super().__init__(data["coordinator"])
         self._data = data
+        self._entry = entry
         self._register = register
+        if register == "H10712":
+            self._attr_state_class = None
         self._convert = description["convert"]
         self._display_precision = description.get("display_precision")
         self._constant_flow_only = description.get("constant_flow_only", False)
@@ -239,6 +247,23 @@ class AtreaRegisterSensor(CoordinatorEntity, SensorEntity):
     def native_value(self):
         """Return the converted register value."""
         value = (self._data.get("status") or {}).get(self._register)
+        if self._register == "H10712":
+            try:
+                raw = int(value)
+            except (TypeError, ValueError):
+                return None
+            supported = dict(self._data.get("supportedForcedModes") or [])
+            input_name = input_for_mode(raw, supported)
+            if input_name:
+                label = input_label(self.hass, self._entry, self._data, input_name)
+                suffix = f"({input_name})"
+                if label != f"{input_name} input" and not label.endswith(suffix):
+                    label = f"{label} {suffix}"
+                return label
+            mode = supported.get(raw)
+            if raw == 0:
+                return ALL_PRESET_LIST[0]
+            return ALL_PRESET_LIST[int(mode)] if mode is not None else None
         return None if value is None else self._convert(value)
 
     @property
