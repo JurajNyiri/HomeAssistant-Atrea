@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from .const import DOMAIN
+from .conditions import discover_conditions
 
 BINARY_SENSOR_REGISTERS = {
     "D10200": ("D1 input", "mdi:electric-switch"),
@@ -29,10 +30,11 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator = data["coordinator"]
     known_registers: set[str] = set()
+    known_conditions: set[str] = set()
 
     def async_discover_sensors() -> None:
         status = data.get("status") or {}
-        entities = []
+        entities = discover_conditions(entry, data, known_conditions)
 
         for register, (name, icon) in BINARY_SENSOR_REGISTERS.items():
             if register not in status or register in known_registers:

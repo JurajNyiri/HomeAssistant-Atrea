@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
+from .conditions import discover_condition_details
 from .const import DOMAIN
 from .utils import convert_temperature
 
@@ -157,9 +158,11 @@ async def async_setup_entry(
     coordinator = data["coordinator"]
     known_registers: set[str] = set()
 
+    known_conditions: set[str] = set()
+
     def async_discover_sensors() -> None:
         status = data.get("status") or {}
-        entities = []
+        entities = discover_condition_details(entry, data, known_conditions)
 
         for register, description in SENSOR_REGISTERS.items():
             if (
